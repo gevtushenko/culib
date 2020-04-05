@@ -13,7 +13,9 @@ target_sources(${PROJECT_NAME}
         INTERFACE
             include/culib/warp/scan.cuh
             include/culib/device/scan.cuh
-        include/culib/warp/detail/warp_scan.cuh)
+            include/culib/warp/utils.cuh
+            include/culib/utils/meta/math.cuh
+            include/culib/warp/detail/warp_scan.cuh)
 
 target_include_directories(${PROJECT_NAME}
         INTERFACE

@@ -5,7 +5,8 @@
 #ifndef CULIB___WARP_SCAN_CUH
 #define CULIB___WARP_SCAN_CUH
 
-#define __FULL_WARP_MASK 0xffffffff
+#include "culib/warp/utils.cuh"
+#include "culib/utils/meta/math.cuh"
 
 namespace culib
 {
@@ -13,12 +14,6 @@ namespace warp
 {
 namespace detail
 {
-
-inline __device__ unsigned int lane_id () {
-  unsigned int ret;
-  asm volatile ("mov.u32 %0, %laneid;" : "=r"(ret));
-  return ret;
-}
 
 template <typename data_type>
 class default_scan_binary_op
@@ -30,11 +25,9 @@ public:
   }
 };
 
-template <int x>
-struct log2 { enum { value = 1 + log2<x/2>::value }; };
-
-template <> struct log2<1> { enum { value = 1 }; };
-
+/**
+ * Hillis Steele inclusive scan.
+ */
 template <typename data_type, int warp_size=32>
 class warp_shfl_scan
 {
@@ -44,7 +37,7 @@ class warp_shfl_scan
   __device__ data_type scan_step (data_type val, unsigned offset, binary_operation binary_op)
   {
     data_type result = val;
-    data_type tmp = __shfl_up_sync (__FULL_WARP_MASK, result, offset, warp_size);
+    data_type tmp = __shfl_up_sync (get_full_wark_mask (), result, offset, warp_size);
     result = binary_op (tmp, result);
 
     if (lid < offset)
@@ -63,11 +56,8 @@ public:
   {
     data_type result = val;
 
-    for (unsigned step = 0; step < log2<warp_size>::value; step++)
-      {
-        const int offset = 1 << step;
-        result = scan_step (result, offset, binary_op);
-      }
+    for (unsigned step = 0; step < utils::math::log2<warp_size>::value; step++)
+      result = scan_step (result, 1 << step, binary_op);
 
     return result;
   }
