@@ -29,9 +29,9 @@ void launch_kernel (
 
   cudaMemcpy (d_in, in, data_size * sizeof (data_type), cudaMemcpyHostToDevice);
 
-  helper_kernel<<<grid, block>>> (in, out, action);
+  helper_kernel<<<grid, block>>> (d_in, d_out, action);
 
-  cudaMemcpy (out, d_in, data_size * sizeof (data_type), cudaMemcpyDeviceToHost);
+  cudaMemcpy (out, d_out, data_size * sizeof (data_type), cudaMemcpyDeviceToHost);
 
   cudaFree (d_out);
   cudaFree (d_in);
