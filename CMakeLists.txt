@@ -13,7 +13,10 @@ target_sources(${PROJECT_NAME}
         INTERFACE
             include/culib/warp/scan.cuh
             include/culib/device/scan.cuh
+            include/culib/warp/detail/warp_shuffle.cuh
             include/culib/warp/utils.cuh
+            include/culib/warp/shuffle.cuh
+            include/culib/utils/meta/any.cuh
             include/culib/utils/meta/math.cuh
             include/culib/warp/detail/warp_scan.cuh)
 
