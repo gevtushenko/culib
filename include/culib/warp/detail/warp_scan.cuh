@@ -2,8 +2,8 @@
 // Created by egi on 4/5/20.
 //
 
-#ifndef CULIB___WARP_SCAN_CUH
-#define CULIB___WARP_SCAN_CUH
+#ifndef CULIB_DETAIL_WARP_SCAN_CUH
+#define CULIB_DETAIL_WARP_SCAN_CUH
 
 #include "culib/warp/utils.cuh"
 #include "culib/utils/meta/math.cuh"
@@ -92,4 +92,4 @@ public:
 } // warp
 } // culib
 
-#endif //CULIB___WARP_SCAN_CUH
+#endif // CULIB_DETAIL_WARP_SCAN_CUH

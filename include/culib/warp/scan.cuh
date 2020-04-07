@@ -2,8 +2,8 @@
 // Created by egi on 4/4/20.
 //
 
-#ifndef CULIB_SCAN_H
-#define CULIB_SCAN_H
+#ifndef CULIB_WARP_SCAN_H
+#define CULIB_WARP_SCAN_H
 
 #include <type_traits>
 
@@ -72,4 +72,4 @@ public:
 } // warp
 } // culib
 
-#endif //CULIB_SCAN_H
+#endif // CULIB_WARP_SCAN_H
