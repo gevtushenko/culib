@@ -31,6 +31,9 @@ target_compile_options(${PROJECT_NAME}
         INTERFACE
             $<$<COMPILE_LANGUAGE:CUDA>:--expt-extended-lambda>)
 
+# Add the cmake folder so the FindSphinx module is found
+set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+
 # Google Test
 enable_testing()
 add_subdirectory(test)
