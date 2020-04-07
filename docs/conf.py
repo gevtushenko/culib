@@ -31,6 +31,7 @@ extensions = [ "breathe" ]
 
 # Breathe Configuration
 breathe_default_project = "CULIB"
+cpp_id_attributes = ["__global__", "__device__"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
