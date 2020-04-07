@@ -34,3 +34,4 @@ target_compile_options(${PROJECT_NAME}
 # Google Test
 enable_testing()
 add_subdirectory(test)
+add_subdirectory(docs)
