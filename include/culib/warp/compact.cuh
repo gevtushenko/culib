@@ -23,6 +23,17 @@ public:
   using scan<int>::scan;
   enum { not_found = -1 };
 
+  /*!
+
+  @verbatim embed:rst
+  .. note::
+    Return ``-1`` for filtered-out elements
+  @endverbatim
+
+  @tparam filter_operation
+  @param val
+  @param filter_op
+  */
   template <typename filter_operation>
   __device__ inline int
   operator ()(data_type val, const filter_operation &filter_op)

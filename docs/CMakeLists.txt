@@ -44,6 +44,7 @@ add_custom_command(OUTPUT ${SPHINX_INDEX_FILE}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         DEPENDS
         # Other docs files you want to track should go here (or in some variable)
+        ${CMAKE_CURRENT_SOURCE_DIR}/warp.rst
         ${CMAKE_CURRENT_SOURCE_DIR}/index.rst
         ${DOXYGEN_INDEX_FILE}
         MAIN_DEPENDENCY ${SPHINX_SOURCE}/conf.py

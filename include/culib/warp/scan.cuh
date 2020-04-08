@@ -47,12 +47,18 @@ class scan : public scan_policy
 public:
   using scan_policy::scan_policy;
 
-  /**
-   * @param val Warp local value
-   * @tparam binary_operation Binary combining function object that will be applied in unspecified order.
-   *                          The behaviour is undefined if binary_operation modifies any element.
-   *
-   * @return Value that would be in ``lane-id`` element of warp array after scan.
+  /*!
+   @verbatim embed:rst
+
+   :math:`y_{i} = \bigoplus_{j=0}^{i} x_{j}`
+
+   @endverbatim
+
+   @param val Warp local value
+   @tparam binary_operation Binary combining function object that will be applied in unspecified order.
+                            The behaviour is undefined if binary_operation modifies any element.
+
+   @return Value that would be in ``lane-id`` element of warp array after scan.
    */
   template<typename binary_operation
         //@cond IGNORE
@@ -66,12 +72,27 @@ public:
     return scan_value (val, binary_op);
   }
 
-  /**
-   * @param val Warp local value
-   * @tparam binary_operation Binary combining function object that will be applied in unspecified order.
-   *                          The behaviour is undefined if binary_operation modifies any element.
-   *
-   * @return Value that would be in ``lane-id`` element of warp array after scan.
+  /*!
+   @verbatim embed:rst
+
+   .. math::
+     y_{i} = \bigoplus_{j=0}^{i - 1} x_{j}
+
+   @endverbatim
+
+   @param val Warp local value
+   @tparam binary_operation Binary combining function object that will be applied in unspecified order.
+                            The behaviour is undefined if binary_operation modifies any element.
+
+    @verbatim embed:rst
+      Usage example::
+
+        culib::warp::scan<data_type> scan;
+        out[threadIdx.x] = scan.exclusive (in[threadIdx.x]);
+
+     @endverbatim
+
+   @return Value that would be in ``lane-id`` element of warp array after scan.
    */
   template<typename binary_operation
       //@cond IGNORE
