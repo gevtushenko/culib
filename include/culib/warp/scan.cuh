@@ -24,8 +24,8 @@ namespace warp
 * number of entrant threads must be equal to warpSize.
 * The default binary combining operator is the sum.
 *
-* @tparam _Tp Scanned data type
-* @tparam _ReducePolicy Policy for warp threads data exchange
+* @tparam data_type Scanned data type
+* @tparam scan_policy Policy for warp threads data exchange
 */
 template<
   typename data_type,
@@ -48,10 +48,17 @@ public:
   using scan_policy::scan_policy;
 
   /**
-   * @tparam _BinaryOperation Binary combining function object thata will be applied in unspecified order.
-   *                          The behaviour is undefined if _BinaryOperation modifies any element.
+   * @param val Warp local value
+   * @tparam binary_operation Binary combining function object that will be applied in unspecified order.
+   *                          The behaviour is undefined if binary_operation modifies any element.
+   *
+   * @return Value that would be in ``lane-id`` element of warp array after scan.
    */
-  template<typename binary_operation = detail::default_scan_binary_op<data_type>>
+  template<typename binary_operation
+        //@cond IGNORE
+          = detail::default_scan_binary_op<data_type>
+        //@endcond
+      >
   __device__
   inline data_type
   inclusive (data_type val, binary_operation binary_op = {})
@@ -59,7 +66,18 @@ public:
     return scan_value (val, binary_op);
   }
 
-  template<typename binary_operation = detail::default_scan_binary_op<data_type>>
+  /**
+   * @param val Warp local value
+   * @tparam binary_operation Binary combining function object that will be applied in unspecified order.
+   *                          The behaviour is undefined if binary_operation modifies any element.
+   *
+   * @return Value that would be in ``lane-id`` element of warp array after scan.
+   */
+  template<typename binary_operation
+      //@cond IGNORE
+        = detail::default_scan_binary_op<data_type>
+      //@endcond
+    >
   __device__
   inline data_type
   exclusive (data_type val, binary_operation binary_op = {})

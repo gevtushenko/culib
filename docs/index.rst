@@ -6,23 +6,15 @@
 Welcome to CULIB's documentation!
 =================================
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+Warp level functions
+====================
 
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
-
-…
-
-Docs
+Scan
 ====
 
-.. doxygenindex:: 
+There are inclusive and exclusive per-warp scan operations in the **CULIB** that are
+provided by ``culib::warp::scan`` class. It's important to note that :ref:`exclusive scan <exclusive>`
+is implemented as ``culib::warp::scan::inclusive`` combined with values shuffle.
+
+.. _exclusive:
+.. doxygenfunction:: culib::warp::scan::exclusive
