@@ -82,16 +82,12 @@ public:
 
    @return Value that would be in ``lane-id`` element of warp array after scan.
    */
-  template<typename binary_operation
-      //@cond IGNORE
-        = binary_op::sum<data_type>
-      //@endcond
-    >
-  __device__
-  inline data_type
-  exclusive (data_type val, binary_operation binary_op = {})
+  template<typename binary_operation = binary_op::sum<data_type>>
+  __device__ inline data_type exclusive (data_type val, binary_operation binary_op = {})
   {
-    shuffle<data_type> shuffler;
+    shuffle<data_type> shuffler
+      = shuffle_dependency_injector<data_type, scan_policy::use_shared_memory>::create (
+          scan_policy::get_cache ());
     return shuffler (scan_value (val, binary_op));
   }
 };

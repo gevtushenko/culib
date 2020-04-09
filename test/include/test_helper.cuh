@@ -37,4 +37,26 @@ void launch_kernel (
   cudaFree (d_in);
 }
 
+class user_type
+{
+public:
+  unsigned long long int x {};
+  unsigned long long int y {};
+
+public:
+  user_type () = default;
+  explicit __device__ __host__ user_type (int i) : x (i), y (0ull) {}
+  __device__ __host__ user_type (unsigned long long int x_arg, unsigned long long int y_arg) : x (x_arg), y (y_arg) {}
+
+  friend bool operator !=(const user_type &lhs, const user_type &rhs)
+  {
+    return lhs.x != rhs.x || lhs.y != rhs.y;
+  }
+
+  friend __device__ user_type operator+ (const user_type &lhs, const user_type &rhs)
+  {
+    return user_type (lhs.x + rhs.x, lhs.y + rhs.y);
+  }
+};
+
 #endif

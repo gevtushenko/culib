@@ -28,32 +28,34 @@ public:
   __device__ data_type shuffle_value (data_type val)
   {
     data_type result = __shfl_up_sync (get_full_wark_mask (), val, 1, warp_size);
-    return lid == 0 ? 0 : result;
+    return lid == 0 ? data_type () : result;
   }
 
 public:
-  static constexpr bool use_shared = false;
+  static constexpr bool use_shared_memory = false;
 };
 
 template <typename data_type, int warp_size=32>
 class shuffle_shrd
 {
+  unsigned lid;
   data_type *warp_shared_workspace;
 
 public:
   shuffle_shrd () = delete;
   explicit __device__ shuffle_shrd (data_type *warp_shared_workspace_arg)
-    : warp_shared_workspace (warp_shared_workspace_arg)
+    : lid (lane_id ())
+    , warp_shared_workspace (warp_shared_workspace_arg)
   { }
 
   __device__ data_type shuffle_value (data_type val)
   {
-    // TODO
-    return 42;
+    warp_shared_workspace[lid] = val;
+    return lid == 0 ? data_type () : warp_shared_workspace[lid - 1];
   }
 
 public:
-  static constexpr bool use_shared = true;
+  static constexpr bool use_shared_memory = true;
 };
 
 } // detail

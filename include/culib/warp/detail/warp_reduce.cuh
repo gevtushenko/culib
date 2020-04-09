@@ -54,7 +54,11 @@ public:
     for (int s = warp_size / 2; s > 0; s >>= 1)
     {
       if (lid < s)
-        warp_shared_workspace[lid] = binary_op (warp_shared_workspace[lid], warp_shared_workspace[lid + s]);
+        val = binary_op (warp_shared_workspace[lid + s], val);
+      __syncwarp ();
+
+      if (lid < s)
+        warp_shared_workspace[lid] = val;
       __syncwarp ();
     }
 

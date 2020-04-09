@@ -65,3 +65,33 @@ void perform_exclusive_scan_test ()
 }
 
 TEST(warp_scan, exclusive_int) { perform_exclusive_scan_test<int> (); }
+
+void perform_exclusive_scan_test_for_user_type ()
+{
+  using data_type = user_type;
+
+  constexpr size_t warp_size = 32;
+  std::vector<data_type> h_in (warp_size, user_type {0});
+  std::vector<data_type> h_out (warp_size);
+
+  h_in[0].x = 1;
+
+  launch_kernel (
+    1 /* blocks */,
+    warp_size /* block size */,
+    warp_size /* data size */,
+    h_in.data (), h_out.data (),
+
+    [] __device__ (data_type const * const in, data_type * const out)
+    {
+      __shared__ char cache[warp_size * sizeof (user_type)];
+      culib::warp::scan<data_type> scan (reinterpret_cast<user_type *> (cache));
+      out[threadIdx.x] = scan.exclusive (in[threadIdx.x]);
+    });
+
+  EXPECT_EQ (h_out[0].x, 0);
+  for (size_t i = 1; i < warp_size; i++)
+    EXPECT_EQ (h_out[i].x, 1);
+}
+
+TEST(warp_scan, exclusive_user_type) { perform_exclusive_scan_test_for_user_type (); }

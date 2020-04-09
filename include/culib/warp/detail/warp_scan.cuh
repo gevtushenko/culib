@@ -21,6 +21,7 @@ namespace detail
 template <typename data_type, int warp_size=32>
 class warp_shfl_scan
 {
+private:
   const unsigned lid;
 
   template <typename binary_operation>
@@ -35,6 +36,9 @@ class warp_shfl_scan
 
     return result;
   }
+
+protected:
+  __device__ data_type *get_cache () { return nullptr; }
 
 public:
   __device__ warp_shfl_scan ()
@@ -53,29 +57,52 @@ public:
   }
 
 public:
-  static constexpr bool use_shared = false;
+  static constexpr bool use_shared_memory = false;
 };
 
 template <typename data_type, int warp_size=32>
 class warp_shrd_scan
 {
+private:
+  const unsigned lid;
   data_type *warp_shared_workspace;
+
+protected:
+  __device__ data_type *get_cache () { return warp_shared_workspace; }
 
 public:
   warp_shrd_scan () = delete;
   explicit __device__ warp_shrd_scan (data_type *warp_shared_workspace_arg)
-    : warp_shared_workspace (warp_shared_workspace_arg)
+    : lid (lane_id ())
+    , warp_shared_workspace (warp_shared_workspace_arg)
   { }
 
   template <typename binary_operation>
   __device__ data_type scan_value (data_type val, binary_operation binary_op)
   {
-    // TODO
-    return 42;
+    warp_shared_workspace[lid] = val;
+    __syncwarp ();
+
+    for (unsigned step = 0; step < utils::math::log2<warp_size>::value; step++)
+      {
+        const unsigned offset = 1 << step;
+
+        if (lid >= offset)
+          val = binary_op (warp_shared_workspace[lid - offset], val);
+        __syncwarp ();
+
+        if (lid >= offset)
+          warp_shared_workspace[lid] = val;
+        __syncwarp ();
+      }
+
+    data_type result = warp_shared_workspace[lid];
+    __syncwarp ();
+    return result;
   }
 
 public:
-  static constexpr bool use_shared = true;
+  static constexpr bool use_shared_memory = true;
 };
 
 template <typename data_type>
