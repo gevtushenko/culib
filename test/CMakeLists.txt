@@ -1,5 +1,7 @@
 project(culib_test CXX CUDA)
 
+set(CMAKE_CXX_STANDARD 17)
+
 add_subdirectory(gtest)
 include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 

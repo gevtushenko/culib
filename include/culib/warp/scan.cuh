@@ -29,19 +29,7 @@ namespace warp
 */
 template<
   typename data_type,
-  typename scan_policy = typename std::conditional<
-    std::integral_constant<bool, utils::meta::is_any<data_type,
-        int,
-        long,
-        long long,
-        unsigned int,
-        unsigned long,
-        unsigned long long,
-        float,
-        double>::value
-      && utils::cuda::check_compute_capability<300> ()>::value,
-    detail::warp_shfl_scan<data_type>,
-    detail::warp_shrd_scan<data_type>>::type>
+  typename scan_policy = typename detail::warp_scan_selector<data_type>::implementation>
 class scan : public scan_policy
 {
 public:
@@ -62,7 +50,7 @@ public:
    */
   template<typename binary_operation
         //@cond IGNORE
-          = detail::default_scan_binary_op<data_type>
+          = binary_op::sum<data_type>
         //@endcond
       >
   __device__
@@ -96,7 +84,7 @@ public:
    */
   template<typename binary_operation
       //@cond IGNORE
-        = detail::default_scan_binary_op<data_type>
+        = binary_op::sum<data_type>
       //@endcond
     >
   __device__

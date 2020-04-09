@@ -15,16 +15,6 @@ namespace warp
 namespace detail
 {
 
-template <typename data_type>
-class default_scan_binary_op
-{
-public:
-  __device__ data_type operator () (const data_type &lhs, const data_type &rhs)
-  {
-    return lhs + rhs;
-  }
-};
-
 /**
  * Hillis Steele inclusive scan.
  */
@@ -86,6 +76,16 @@ public:
 
 public:
   static constexpr bool use_shared = true;
+};
+
+template <typename data_type>
+class warp_scan_selector
+{
+public:
+  using implementation = typename std::conditional<
+    is_shuffle_available<data_type> (),
+      warp_shfl_scan<data_type>,
+      warp_shrd_scan<data_type>>::type;
 };
 
 } // detail

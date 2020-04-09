@@ -15,16 +15,6 @@ namespace warp
 namespace detail
 {
 
-template <typename data_type>
-class default_reduce_binary_op
-{
-public:
-  __device__ data_type operator () (const data_type &lhs, const data_type &rhs)
-  {
-    return lhs + rhs;
-  }
-};
-
 template <typename data_type, int warp_size=32>
 class warp_shfl_reduce
 {
@@ -75,6 +65,16 @@ public:
 
 public:
   static constexpr bool use_shared = true;
+};
+
+template <typename data_type>
+class warp_reduce_selector
+{
+public:
+  using implementation = typename std::conditional<
+    is_shuffle_available<data_type> (),
+      warp_shfl_reduce<data_type>,
+      warp_shrd_reduce<data_type>>::type;
 };
 
 } // detail
