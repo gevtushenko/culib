@@ -30,7 +30,7 @@ public:
   }
 
 public:
-  static constexpr bool use_shared = false;
+  static constexpr bool use_shared_memory = false;
 };
 
 template <typename data_type, int warp_size=32>
@@ -64,7 +64,7 @@ public:
   }
 
 public:
-  static constexpr bool use_shared = true;
+  static constexpr bool use_shared_memory = true;
 };
 
 template <typename data_type>
