@@ -6,24 +6,21 @@
 #include <vector>
 #include <numeric>
 
-template <typename data_type>
+template <typename data_type, size_t threads_in_block>
 void perform_block_reduce_test ()
 {
-  constexpr size_t warp_size = 32;
-  std::vector<data_type> h_in (warp_size, 0);
-  std::vector<data_type> h_out (warp_size);
-
-  std::fill_n (h_in.data (), warp_size, 1);
+  std::vector<data_type> h_in (threads_in_block, 1);
+  std::vector<data_type> h_out (threads_in_block);
 
   launch_kernel (
     1 /* blocks */,
-    warp_size /* block size */,
-    warp_size /* data size */,
+    threads_in_block /* block size */,
+    threads_in_block /* data size */,
     h_in.data (), h_out.data (),
 
     [] __device__ (data_type const * const in, data_type * const out)
     {
-      __shared__ data_type cache[warp_size];
+      __shared__ data_type cache[threads_in_block];
       culib::block::reduce<data_type> reduce (cache);
       out[threadIdx.x] = reduce (in[threadIdx.x]);
     });
@@ -32,8 +29,9 @@ void perform_block_reduce_test ()
   ASSERT_TRUE (culib::warp::reduce<data_type>::use_shared_memory == false);
 #endif
 
-  for (size_t i = 0; i < warp_size; i++)
-    EXPECT_EQ (h_out[i], warp_size);
+  for (size_t i = 0; i < 32; i++)
+    EXPECT_EQ (h_out[i], threads_in_block);
 }
 
-TEST(block_reduce, single_warp_int) { perform_block_reduce_test<int> (); }
+TEST(block_reduce, single_warp_int) { perform_block_reduce_test<int, 32> (); }
+TEST(block_reduce, multiple_warp_int) { perform_block_reduce_test<int, 4 * 32> (); }

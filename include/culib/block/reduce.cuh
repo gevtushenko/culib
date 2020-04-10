@@ -74,7 +74,7 @@ public:
       {
         if (warp_reducer::use_shared_memory)
           __syncwarp (); /// Cache could be modified without sync in code below
-        val = warp_reduce (val);
+        val = warp_reduce (val, binary_op);
       }
 
     return val;
