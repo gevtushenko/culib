@@ -86,7 +86,7 @@ public:
   __device__ inline data_type exclusive (data_type val, binary_operation binary_op = {})
   {
     shuffle<data_type> shuffler
-      = shuffle_dependency_injector<data_type, scan_policy::use_shared_memory>::create (
+      = shared_dependency_injector<data_type, shuffle<data_type>, scan_policy::use_shared_memory>::create (
           scan_policy::get_cache ());
     return shuffler (scan_value (val, binary_op));
   }

@@ -42,23 +42,6 @@ public:
   }
 };
 
-template <typename data_type, bool use_shared_memory>
-class shuffle_dependency_injector;
-
-template <typename data_type>
-class shuffle_dependency_injector<data_type, false>
-{
-public:
-  static __device__ shuffle<data_type> create (data_type *) { return shuffle<data_type> (); }
-};
-
-template <typename data_type>
-class shuffle_dependency_injector<data_type, true>
-{
-public:
-  static __device__ shuffle<data_type> create (data_type *cache) { return shuffle<data_type> ( cache ); }
-};
-
 } // warp
 } // culib
 

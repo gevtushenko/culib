@@ -10,6 +10,7 @@ target_sources(${PROJECT_NAME}
         PRIVATE
             src/gtest_runner.cpp
             include/test_helper.cuh
+            src/block/reduce_test.cu
             src/warp/compact_test.cu
             src/warp/reduce_test.cu
             src/warp/scan_test.cu)

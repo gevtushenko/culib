@@ -61,6 +61,30 @@ public:
 
 }
 
+template <
+  typename data_type,
+  typename warp_object,
+  bool use_shared_memory>
+class shared_dependency_injector;
+
+template <
+  typename data_type,
+  typename warp_object>
+class shared_dependency_injector<data_type, warp_object, false>
+{
+public:
+  static __device__ warp_object create (data_type *) { return warp_object (); }
+};
+
+template <
+  typename data_type,
+  typename warp_object>
+class shared_dependency_injector<data_type, warp_object, true>
+{
+public:
+  static __device__ warp_object create (data_type *cache) { return warp_object (cache); }
+};
+
 } // warp
 } // culib
 
