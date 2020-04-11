@@ -32,9 +32,25 @@ class reduce
 {
   data_type *block_shared_workspace;
 
+  const unsigned int tid;
+  const unsigned int lid;
+  const unsigned int wid;
+
+  using warp_reducer = warp::reduce<data_type>;
+  warp_reducer warp_reduce;
+
 public:
   explicit __device__ reduce (data_type *block_shared_workspace_arg)
     : block_shared_workspace (block_shared_workspace_arg)
+    , tid (indexing_policy::get_thrd_id ())
+    , lid (indexing_policy::get_lane_id ())
+    , wid (indexing_policy::get_warp_id ())
+    , warp_reduce (
+      warp::shared_dependency_injector<data_type, warp_reducer, warp_reducer::use_shared_memory>::create (
+        warp_reducer::use_shared_memory
+        ? block_shared_workspace + wid * warpSize
+        : nullptr)
+      )
   { }
 
   /**
@@ -44,22 +60,8 @@ public:
   template<typename binary_operation = warp::binary_op::sum<data_type>>
   __device__
   inline data_type
-  operator ()(data_type val, binary_operation binary_op = {})
+  reduce_to_master_warp (data_type val, binary_operation binary_op = {})
   {
-    const int tid = indexing_policy::get_thrd_id ();
-    const int lid = indexing_policy::get_lane_id ();
-    const int wid = indexing_policy::get_warp_id ();
-
-    using warp_reducer = warp::reduce<data_type>;
-
-    data_type *warp_workspace = warp_reducer::use_shared_memory
-                              ? block_shared_workspace + wid * warpSize
-                              : nullptr;
-
-    warp_reducer warp_reduce
-      = warp::shared_dependency_injector<data_type, warp_reducer, warp_reducer::use_shared_memory>::create (
-          warp_workspace);
-
     auto warp_reduce_result = warp_reduce (val, binary_op);
 
     if (lid == 0)
@@ -79,6 +81,24 @@ public:
 
     return val;
   }
+
+  template<typename binary_operation = warp::binary_op::sum<data_type>>
+  __device__
+  inline data_type
+  all_reduce (data_type val, binary_operation binary_op = {})
+  {
+    val = reduce_to_master_warp (val, binary_op);
+
+    if (wid == 0)
+      block_shared_workspace[lid] = val;
+    __syncthreads ();
+
+    val = lid == 0 ? block_shared_workspace[wid % warpSize] : data_type {}; // TODO identity
+    __syncthreads ();
+
+    return warp_reduce (val, binary_op);
+  }
+
 };
 
 } // block
