@@ -47,38 +47,6 @@ constexpr bool is_shuffle_available ()
   return type_in_list && version_is_fine;
 }
 
-namespace binary_op
-{
-
-template<typename data_type>
-class sum
-{
-public:
-  __device__ data_type
-  operator() (const data_type &lhs, const data_type &rhs)
-  {
-    return lhs + rhs;
-  }
-
-  __device__ data_type identity () const { return {}; }
-};
-
-template<typename data_type>
-class max
-{
-public:
-  __device__ data_type
-  operator() (const data_type &lhs, const data_type &rhs)
-  {
-    return ::max (lhs, rhs);
-  }
-
-  __device__ data_type
-  identity () const { return meta::numeric_limits<data_type>::min (); }
-};
-
-}
-
 template <
   typename data_type,
   typename warp_object,

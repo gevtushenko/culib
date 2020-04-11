@@ -21,6 +21,7 @@ target_sources(${PROJECT_NAME}
             include/culib/warp/compact.cuh
             include/culib/block/reduce.cuh
             include/culib/utils/meta/any.cuh
+            include/culib/utils/meta/binary_ops.cuh
             include/culib/utils/meta/math.cuh
             include/culib/utils/meta/limits.cuh
             include/culib/warp/detail/warp_scan.cuh)

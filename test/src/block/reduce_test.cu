@@ -84,7 +84,7 @@ void perform_block_all_reduce_max_test ()
     {
       __shared__ data_type cache[threads_in_block];
       culib::block::reduce<data_type> reduce (cache);
-      out[threadIdx.x] = reduce.all_reduce (in[threadIdx.x], culib::warp::binary_op::max<data_type> {});
+      out[threadIdx.x] = reduce.all_reduce (in[threadIdx.x], culib::binary_op::max<data_type> {});
     });
 
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300

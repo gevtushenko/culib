@@ -57,7 +57,7 @@ public:
    * @tparam binary_operation Binary combining function object thata will be applied in unspecified order.
    *                          The behaviour is undefined if binary_operation modifies any element.
    */
-  template<typename binary_operation = warp::binary_op::sum<data_type>>
+  template<typename binary_operation = binary_op::sum<data_type>>
   __device__
   inline data_type
   reduce_to_master_warp (data_type val, binary_operation binary_op = {})
@@ -82,7 +82,7 @@ public:
     return val;
   }
 
-  template<typename binary_operation = warp::binary_op::sum<data_type>>
+  template<typename binary_operation = binary_op::sum<data_type>>
   __device__
   inline data_type
   all_reduce (data_type val, binary_operation binary_op = {})

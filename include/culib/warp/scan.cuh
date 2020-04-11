@@ -11,6 +11,7 @@
 #include "culib/warp/detail/warp_scan.cuh"
 #include "culib/utils/cuda/version.h"
 #include "culib/utils/meta/any.cuh"
+#include "culib/utils/meta/binary_ops.cuh"
 
 namespace culib
 {
