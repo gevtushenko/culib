@@ -70,7 +70,7 @@ public:
 
     val = tid < indexing_policy::get_n_warp_in_block ()
         ? block_shared_workspace[lid]
-        : data_type {};
+        : binary_op.identity ();
 
     if (wid == 0)
       {
@@ -93,7 +93,7 @@ public:
       block_shared_workspace[lid] = val;
     __syncthreads ();
 
-    val = lid == 0 ? block_shared_workspace[wid % warpSize] : data_type {}; // TODO identity
+    val = lid == 0 ? block_shared_workspace[wid % warpSize] : binary_op.identity ();
     __syncthreads ();
 
     return warp_reduce (val, binary_op);

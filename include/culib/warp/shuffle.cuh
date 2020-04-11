@@ -19,7 +19,7 @@ namespace warp
 template<
   typename data_type,
   typename shuffle_policy = typename std::conditional<
-    std::integral_constant<bool, utils::meta::is_any<data_type,
+    std::integral_constant<bool, meta::is_any<data_type,
         int,
         long,
         long long,
@@ -28,7 +28,7 @@ template<
         unsigned long long,
         float,
         double>::value
-     && utils::cuda::check_compute_capability<300> ()>::value,
+     && cuda::check_compute_capability<300> ()>::value,
     detail::shuffle_shfl<data_type>,
     detail::shuffle_shrd<data_type>>::type>
 class shuffle : public shuffle_policy {

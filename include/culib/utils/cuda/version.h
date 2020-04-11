@@ -7,8 +7,6 @@
 
 namespace culib
 {
-namespace utils
-{
 namespace cuda
 {
 
@@ -22,7 +20,6 @@ constexpr bool check_compute_capability ()
 #endif
 }
 
-} // cuda
 } // utils
 } //culib
 

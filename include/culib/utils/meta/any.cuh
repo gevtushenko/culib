@@ -7,8 +7,6 @@
 
 namespace culib
 {
-namespace utils
-{
 namespace meta
 {
 
@@ -22,7 +20,6 @@ template<typename T, typename First, typename... Rest>
 struct is_any<T, First, Rest...> : std::integral_constant<bool, std::is_same<T, First>::value || is_any<T, Rest...>::value>
 {};
 
-}
 }
 }
 

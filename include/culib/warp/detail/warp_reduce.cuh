@@ -5,6 +5,8 @@
 #ifndef CULIB_DETAIL_WARP_REDUCE_CUH
 #define CULIB_DETAIL_WARP_REDUCE_CUH
 
+#include <type_traits>
+
 #include "culib/warp/utils.cuh"
 #include "culib/utils/meta/math.cuh"
 

@@ -2,11 +2,12 @@
 // Created by egi on 4/5/20.
 //
 
-#ifndef CULIB_UTILS_H
-#define CULIB_UTILS_H
+#ifndef CULIB_WARP_UTILS_H
+#define CULIB_WARP_UTILS_H
 
 #include "culib/utils/cuda/version.h"
 #include "culib/utils/meta/any.cuh"
+#include "culib/utils/meta/limits.cuh"
 
 namespace culib
 {
@@ -31,7 +32,7 @@ template <typename data_type>
 constexpr bool is_shuffle_available ()
 {
   constexpr bool type_in_list =
-    utils::meta::is_any<data_type,
+    meta::is_any<data_type,
       int,
       long,
       long long,
@@ -41,7 +42,7 @@ constexpr bool is_shuffle_available ()
       float,
       double>::value;
   constexpr bool version_is_fine =
-    utils::cuda::check_compute_capability<300> ();
+    cuda::check_compute_capability<300> ();
 
   return type_in_list && version_is_fine;
 }
@@ -49,14 +50,31 @@ constexpr bool is_shuffle_available ()
 namespace binary_op
 {
 
-template <typename data_type>
+template<typename data_type>
 class sum
 {
 public:
-  __device__ data_type operator () (const data_type &lhs, const data_type &rhs)
+  __device__ data_type
+  operator() (const data_type &lhs, const data_type &rhs)
   {
     return lhs + rhs;
   }
+
+  __device__ data_type identity () const { return {}; }
+};
+
+template<typename data_type>
+class max
+{
+public:
+  __device__ data_type
+  operator() (const data_type &lhs, const data_type &rhs)
+  {
+    return ::max (lhs, rhs);
+  }
+
+  __device__ data_type
+  identity () const { return meta::numeric_limits<data_type>::min (); }
 };
 
 }
@@ -88,4 +106,4 @@ public:
 } // warp
 } // culib
 
-#endif //CULIB_UTILS_H
+#endif // CULIB_WARP_UTILS_H
