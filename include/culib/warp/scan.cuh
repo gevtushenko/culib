@@ -30,7 +30,11 @@ namespace warp
 */
 template<
   typename data_type,
-  typename scan_policy = typename detail::warp_scan_selector<data_type>::implementation>
+  typename scan_policy
+    // @cond IGNORE
+      = typename detail::warp_scan_selector<data_type>::implementation
+    // @endcond
+  >
 class scan : public scan_policy
 {
 public:
@@ -38,9 +42,8 @@ public:
 
   /*!
    @verbatim embed:rst
-
-   :math:`y_{i} = \bigoplus_{j=0}^{i} x_{j}`
-
+   .. math::
+     y_{i} = \bigoplus_{j=0}^{i} x_{j}
    @endverbatim
 
    @param val Warp local value
@@ -62,26 +65,27 @@ public:
   }
 
   /*!
-   @verbatim embed:rst
-
-   .. math::
-     y_{i} = \bigoplus_{j=0}^{i - 1} x_{j}
-
-   @endverbatim
-
-   @param val Warp local value
-   @tparam binary_operation Binary combining function object that will be applied in unspecified order.
-                            The behaviour is undefined if binary_operation modifies any element.
-
-    @verbatim embed:rst
-      Usage example::
-
-        culib::warp::scan<data_type> scan;
-        out[threadIdx.x] = scan.exclusive (in[threadIdx.x]);
-
-     @endverbatim
-
-   @return Value that would be in ``lane-id`` element of warp array after scan.
+   * @verbatim embed:rst:leading-asterisk
+   * .. math::
+   *   y_{i} = \bigoplus_{j=0}^{i - 1} x_{j}
+   * @endverbatim
+   *
+   * @param val Warp local value
+   * @tparam binary_operation Binary combining function object that will be applied in unspecified order.
+   *                          The behaviour is undefined if binary_operation modifies any element.
+   *
+   *  @verbatim embed:rst:leading-asterisk
+   *  .. _warp_scan_exclusive:
+   *
+   *  Usage example:
+   *
+   *  .. code-block:: cuda
+   *
+   *    culib::warp::scan<data_type> scan;
+   *    const data_type val = scan.exclusive (thread_local_value);
+   *
+   *  @endverbatim
+   * @return Value that would be in ``lane-id`` element of warp array after scan.
    */
   template<typename binary_operation = binary_op::sum<data_type>>
   __device__ inline data_type exclusive (data_type val, binary_operation binary_op = {})

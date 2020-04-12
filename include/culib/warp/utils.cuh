@@ -28,6 +28,9 @@ unsigned int lane_id ()
   return ret;
 }
 
+/**
+ * Check if specified data_type is supported by warp shuffle functions.
+ */
 template <typename data_type>
 constexpr bool is_shuffle_available ()
 {

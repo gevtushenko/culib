@@ -21,7 +21,7 @@ Examples
 ========
 
 **CULIB** provides algorithms as templated classes. Objects of these classes could be reused. The following code
-illustrates a kernel fragment performing :ref:`exclusive scan <exclusive>` across the threads of a warp:
+illustrates a kernel fragment performing :ref:`exclusive scan <warp_scan_exclusive>` across the threads of a warp:
 
 .. code-block:: cuda
 
