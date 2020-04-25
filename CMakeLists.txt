@@ -5,7 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 
 # CUDA
 find_package(CUDA REQUIRED)
-include_directories("${CUDA_INCLUDE_DIRS}")
 
 # Library
 add_library(${PROJECT_NAME} INTERFACE)
@@ -28,6 +27,7 @@ target_sources(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME}
         INTERFACE
+            "${CUDA_INCLUDE_DIRS}"
             include)
 
 target_compile_options(${PROJECT_NAME}
@@ -37,7 +37,17 @@ target_compile_options(${PROJECT_NAME}
 # Add the cmake folder so the FindSphinx module is found
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
+option(BUILD_TESTS "Build tests for CULIB" ON)
+
 # Google Test
-enable_testing()
-add_subdirectory(test)
-add_subdirectory(docs)
+if(BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(test)
+    add_subdirectory(docs)
+endif()
+
+option(BUILD_BENCHMARKS "Build benchmarks for CULIB" OFF)
+
+if(BUILD_BENCHMARKS)
+    add_subdirectory(benchmarks)
+endif()
