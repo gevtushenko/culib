@@ -1,0 +1,10 @@
+//
+// Created by egi on 4/25/20.
+//
+
+#ifndef CULIB_VERSION_CUH
+#define CULIB_VERSION_CUH
+
+#cmakedefine CULIB_VERSION "@CULIB_VERSION@"
+
+#endif //CULIB_VERSION_CUH

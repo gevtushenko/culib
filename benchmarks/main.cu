@@ -6,6 +6,7 @@
 #include <cub/cub_version.cuh>
 #include <cub/cub.cuh>
 
+#include "culib/utils/version.cuh"
 #include "culib/warp/reduce.cuh"
 
 template<typename data_type>
@@ -111,7 +112,8 @@ void warp_reduce_benchmark ()
       test_cub_warp_reduce_sum_kernel<ilp, data_type> <<<1, 32>>> (data, 42, elapsed);
     });
 
-  test_warp_reduce_sum<data_type, ilp> ("culib",
+  const std::string culib_with_version = std::string ("culib.") + CULIB_VERSION;
+  test_warp_reduce_sum<data_type, ilp> (culib_with_version,
     [] (data_type *data, unsigned long long int *elapsed) {
       test_culib_warp_reduce_sum_kernel<ilp, data_type> <<<1, 32>>> (data, 42, elapsed);
     });

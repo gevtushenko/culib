@@ -3,6 +3,20 @@ project(culib)
 
 set(CMAKE_CXX_STANDARD 17)
 
+# culib version
+find_package(Git QUIET)
+if (GIT_FOUND)
+    execute_process(COMMAND ${GIT_EXECUTABLE} describe
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            OUTPUT_VARIABLE "GIT_VERSION"
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET)
+    string(REGEX REPLACE "-g.*" "" GIT_VERSION "${GIT_VERSION}")
+    set(CULIB_VERSION ${GIT_VERSION})
+endif()
+
+configure_file("${PROJECT_SOURCE_DIR}/cmake/version.cuh.in" "${CMAKE_SOURCE_DIR}/include/culib/utils/version.cuh" @ONLY)
+
 # CUDA
 find_package(CUDA REQUIRED)
 
