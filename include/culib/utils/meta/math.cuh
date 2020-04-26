@@ -12,25 +12,13 @@ namespace utils
 namespace math
 {
 
-template <int x>
-class log2
+constexpr __device__ unsigned int log2 (unsigned int n)
 {
-public:
-  enum
-  {
-    value = 1 + log2<x/2>::value
-  };
-};
+  if (n < 2)
+    return 0;
 
-template <>
-class log2<1>
-{
-public:
-  enum
-  {
-    value = 1
-  };
-};
+  return 1 + log2 (n / 2);
+}
 
 }
 }

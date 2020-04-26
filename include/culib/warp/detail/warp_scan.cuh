@@ -50,7 +50,7 @@ public:
   {
     data_type result = val;
 
-    for (unsigned step = 0; step < utils::math::log2<warp_size>::value; step++)
+    for (unsigned step = 0; step < utils::math::log2 (warp_size); step++)
       result = scan_step (result, 1 << step, binary_op);
 
     return result;
@@ -83,7 +83,7 @@ public:
     warp_shared_workspace[lid] = val;
     __syncwarp ();
 
-    for (unsigned step = 0; step < utils::math::log2<warp_size>::value; step++)
+    for (unsigned step = 0; step < utils::math::log2 (warp_size); step++)
       {
         const unsigned offset = 1 << step;
 

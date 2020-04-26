@@ -3,13 +3,9 @@ project(culib_benchmarks CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
 
-# CUDA
-find_package(CUDA REQUIRED)
-include_directories("${CUDA_INCLUDE_DIRS}")
-
 # Library
 add_executable(${PROJECT_NAME} src/main.cu include/results.h src/results.cpp)
 
-target_compile_options(${PROJECT_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-O3>)
+target_compile_options(${PROJECT_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-O3 -gencode arch=compute_75,code=sm_75>)
 target_link_libraries(${PROJECT_NAME} ${CMAKE_PROJECT_NAME} stdc++fs)
 target_include_directories(${PROJECT_NAME} PRIVATE include)
