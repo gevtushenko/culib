@@ -1,6 +1,8 @@
 #ifndef CULIB_BINARY_OPS_CUH
 #define CULIB_BINARY_OPS_CUH
 
+#include "culib/utils/meta/limits.cuh"
+
 namespace culib
 {
 namespace binary_op

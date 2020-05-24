@@ -11,7 +11,7 @@ namespace cuda
 {
 
 template<int required_cc>
-constexpr bool check_compute_capability ()
+__device__ constexpr bool check_compute_capability ()
 {
 #if defined(__CUDA_ARCH__)
   return __CUDA_ARCH__ >= required_cc;

@@ -21,8 +21,8 @@ class numeric_limits<int>
 public:
   static constexpr bool is_specialized = true;
 
-  __host__ __device__ static constexpr bool min () noexcept { return - __INT_MAX__ - 1; }
-  __host__ __device__ static constexpr bool max () noexcept { return   __INT_MAX__; }
+  __host__ __device__ static constexpr int min () noexcept { return - __INT_MAX__ - 1; }
+  __host__ __device__ static constexpr int max () noexcept { return   __INT_MAX__; }
 };
 
 } // meta

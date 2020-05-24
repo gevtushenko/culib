@@ -26,6 +26,7 @@ target_sources(${PROJECT_NAME}
         INTERFACE
             include/culib/warp/scan.cuh
             include/culib/device/scan.cuh
+            include/culib/device/reduce.cuh
             include/culib/warp/reduce.cuh
             include/culib/warp/detail/warp_reduce.cuh
             include/culib/warp/detail/warp_shuffle.cuh

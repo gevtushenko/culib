@@ -32,7 +32,7 @@ unsigned int lane_id ()
  * Check if specified data_type is supported by warp shuffle functions.
  */
 template <typename data_type>
-constexpr bool is_shuffle_available ()
+__device__ constexpr bool is_shuffle_available ()
 {
   constexpr bool type_in_list =
     meta::is_any<data_type,
