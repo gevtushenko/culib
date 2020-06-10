@@ -27,6 +27,7 @@ target_sources(${PROJECT_NAME}
             include/culib/warp/scan.cuh
             include/culib/device/scan.cuh
             include/culib/device/reduce.cuh
+            include/culib/node/reduce.cuh
             include/culib/warp/reduce.cuh
             include/culib/warp/detail/warp_reduce.cuh
             include/culib/warp/detail/warp_shuffle.cuh
@@ -45,9 +46,7 @@ target_include_directories(${PROJECT_NAME}
             "${CUDA_INCLUDE_DIRS}"
             include)
 
-target_compile_options(${PROJECT_NAME}
-        INTERFACE
-            $<$<COMPILE_LANGUAGE:CUDA>:--expt-extended-lambda>)
+# target_compile_options(${PROJECT_NAME} INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:--expt-extended-lambda>)
 
 # Add the cmake folder so the FindSphinx module is found
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
