@@ -7,6 +7,18 @@
 #include <numeric>
 
 template <typename data_type, size_t threads_in_block>
+class block_test_reducer
+{
+public:
+  __device__ void operator () (data_type const * const in, data_type * const out)
+  {
+    __shared__ data_type cache[threads_in_block];
+    culib::block::reduce<data_type> reduce (cache);
+    out[threadIdx.x] = reduce.reduce_to_master_warp (in[threadIdx.x]);
+  }
+};
+
+template <typename data_type, size_t threads_in_block>
 void perform_block_reduce_test ()
 {
   std::vector<data_type> h_in (threads_in_block, 1);
@@ -17,13 +29,7 @@ void perform_block_reduce_test ()
     threads_in_block /* block size */,
     threads_in_block /* data size */,
     h_in.data (), h_out.data (),
-
-    [] __device__ (data_type const * const in, data_type * const out)
-    {
-      __shared__ data_type cache[threads_in_block];
-      culib::block::reduce<data_type> reduce (cache);
-      out[threadIdx.x] = reduce.reduce_to_master_warp (in[threadIdx.x]);
-    });
+    block_test_reducer<data_type, threads_in_block> ());
 
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300
   ASSERT_TRUE (culib::warp::reduce<data_type>::use_shared_memory == false);
@@ -37,6 +43,18 @@ TEST(block_reduce, single_warp_int) { perform_block_reduce_test<int, 32> (); }
 TEST(block_reduce, multiple_warps_int) { perform_block_reduce_test<int, 4 * 32> (); }
 
 template <typename data_type, size_t threads_in_block>
+class block_test_all_reducer
+{
+public:
+  __device__ void operator () (data_type const * const in, data_type * const out)
+  {
+    __shared__ data_type cache[threads_in_block];
+    culib::block::reduce<data_type> reduce (cache);
+    out[threadIdx.x] = reduce.all_reduce (in[threadIdx.x]);
+  }
+};
+
+template <typename data_type, size_t threads_in_block>
 void perform_block_all_reduce_test ()
 {
   std::vector<data_type> h_in (threads_in_block, 1);
@@ -47,13 +65,7 @@ void perform_block_all_reduce_test ()
     threads_in_block /* block size */,
     threads_in_block /* data size */,
     h_in.data (), h_out.data (),
-
-    [] __device__ (data_type const * const in, data_type * const out)
-    {
-      __shared__ data_type cache[threads_in_block];
-      culib::block::reduce<data_type> reduce (cache);
-      out[threadIdx.x] = reduce.all_reduce (in[threadIdx.x]);
-    });
+    block_test_all_reducer<data_type, threads_in_block> ());
 
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300
   ASSERT_TRUE (culib::warp::reduce<data_type>::use_shared_memory == false);
@@ -65,6 +77,18 @@ void perform_block_all_reduce_test ()
 
 TEST(block_all_reduce, single_warp_int) { perform_block_all_reduce_test<int, 32> (); }
 TEST(block_all_reduce, multiple_warps_int) { perform_block_all_reduce_test<int, 4 * 32> (); }
+
+template <typename data_type, size_t threads_in_block>
+class block_all_reducer
+{
+public:
+  __device__ void operator () (data_type const * const in, data_type * const out)
+  {
+    __shared__ data_type cache[threads_in_block];
+    culib::block::reduce<data_type> reduce (cache);
+    out[threadIdx.x] = reduce.all_reduce (in[threadIdx.x], culib::binary_op::max<data_type> {});
+  }
+};
 
 template <typename data_type, size_t threads_in_block>
 void perform_block_all_reduce_max_test ()
@@ -79,13 +103,7 @@ void perform_block_all_reduce_max_test ()
     threads_in_block /* block size */,
     threads_in_block /* data size */,
     h_in.data (), h_out.data (),
-
-    [] __device__ (data_type const * const in, data_type * const out)
-    {
-      __shared__ data_type cache[threads_in_block];
-      culib::block::reduce<data_type> reduce (cache);
-      out[threadIdx.x] = reduce.all_reduce (in[threadIdx.x], culib::binary_op::max<data_type> {});
-    });
+    block_all_reducer<data_type, threads_in_block> ());
 
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300
   ASSERT_TRUE (culib::warp::reduce<data_type>::use_shared_memory == false);

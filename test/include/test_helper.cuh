@@ -7,7 +7,7 @@ template <typename data_type, typename action_type>
 __global__ void helper_kernel (
   const data_type *in,
   data_type *out,
-  const action_type &action)
+  action_type action)
 {
   action (in, out);
 }

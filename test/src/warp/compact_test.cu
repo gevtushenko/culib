@@ -11,6 +11,17 @@
 #include <numeric>
 
 template <typename data_type>
+class compacter
+{
+public:
+  __device__ void operator () (data_type const * const in, data_type * const out)
+  {
+    culib::warp::compact<data_type> compact;
+    out[threadIdx.x] = compact (in[threadIdx.x], [] (const data_type &value) -> bool { return value > 2; });
+  }
+};
+
+template <typename data_type>
 void perform_compact_test ()
 {
   constexpr size_t warp_size = 32;
@@ -23,12 +34,7 @@ void perform_compact_test ()
     warp_size /* block size */,
     warp_size /* data size */,
     h_in.data (), h_out.data (),
-
-    [] __device__ (data_type const * const in, data_type * const out)
-    {
-      culib::warp::compact<data_type> compact;
-      out[threadIdx.x] = compact (in[threadIdx.x], [] (const data_type &value) -> bool { return value > 2; });
-    });
+    compacter<data_type> ());
 
   for (size_t i = 0; i < warp_size; i++)
     {

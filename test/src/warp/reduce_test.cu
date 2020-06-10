@@ -11,6 +11,17 @@
 #include <numeric>
 
 template <typename data_type>
+class test_reducer
+{
+public:
+  __device__ void operator () (data_type const * const in, data_type * const out)
+  {
+    culib::warp::reduce<data_type> reduce;
+    out[threadIdx.x] = reduce (in[threadIdx.x]);
+  }
+};
+
+template <typename data_type>
 void perform_reduce_test ()
 {
   constexpr size_t warp_size = 32;
@@ -24,12 +35,7 @@ void perform_reduce_test ()
     warp_size /* block size */,
     warp_size /* data size */,
     h_in.data (), h_out.data (),
-
-    [] __device__ (data_type const * const in, data_type * const out)
-    {
-      culib::warp::reduce<data_type> reduce;
-      out[threadIdx.x] = reduce (in[threadIdx.x]);
-    });
+    test_reducer<data_type> ());
 
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300
   ASSERT_TRUE (culib::warp::reduce<data_type>::use_shared_memory == false);
@@ -40,6 +46,19 @@ void perform_reduce_test ()
 }
 
 TEST(warp_reduce, int) { perform_reduce_test<int> (); }
+
+template <typename data_type>
+class user_reducer
+{
+public:
+  __device__ void operator () (data_type const * const in, data_type * const out)
+  {
+    constexpr size_t warp_size = 32;
+    __shared__ char cache[warp_size * sizeof (user_type)];
+    culib::warp::reduce<data_type> reduce (reinterpret_cast<user_type *> (cache));
+    out[threadIdx.x] = reduce (in[threadIdx.x]);
+  }
+};
 
 void perform_reduce_test_for_user_type ()
 {
@@ -56,13 +75,7 @@ void perform_reduce_test_for_user_type ()
     warp_size /* block size */,
     warp_size /* data size */,
     h_in.data (), h_out.data (),
-
-    [] __device__ (data_type const * const in, data_type * const out)
-    {
-      __shared__ char cache[warp_size * sizeof (user_type)];
-      culib::warp::reduce<data_type> reduce (reinterpret_cast<user_type *> (cache));
-      out[threadIdx.x] = reduce (in[threadIdx.x]);
-    });
+    user_reducer<data_type> ());
 
   ASSERT_TRUE (culib::warp::reduce<data_type>::use_shared_memory == true);
 
