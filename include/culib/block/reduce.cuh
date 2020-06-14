@@ -63,6 +63,7 @@ public:
   reduce_to_master_warp (data_type val, binary_operation binary_op = {})
   {
     auto warp_reduce_result = warp_reduce (val, binary_op);
+    __syncthreads ();
 
     if (lid == 0)
       block_shared_workspace[wid] = warp_reduce_result;
