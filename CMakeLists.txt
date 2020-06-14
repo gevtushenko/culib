@@ -46,7 +46,9 @@ target_include_directories(${PROJECT_NAME}
             "${CUDA_INCLUDE_DIRS}"
             include)
 
-# target_compile_options(${PROJECT_NAME} INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:--expt-extended-lambda>)
+if(CUDA_VERSION_MAJOR LESS 7)
+target_compile_options(${PROJECT_NAME} INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-gencode arch=compute_11,code=sm_11>)
+endif()
 
 # Add the cmake folder so the FindSphinx module is found
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
