@@ -31,7 +31,7 @@ unsigned int lane_id ()
 inline __device__
 void sync ()
 {
-#if __CUDACC_VER_MAJOR >= 9
+#if __CUDACC_VER_MAJOR__ >= 9
   __syncwarp ();
 #endif
 }
