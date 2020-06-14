@@ -42,7 +42,7 @@ void sync ()
 template <typename data_type>
 __device__ constexpr bool is_shuffle_available ()
 {
-  constexpr bool type_in_list =
+  return
     meta::is_any<data_type,
       int,
       long,
@@ -51,11 +51,8 @@ __device__ constexpr bool is_shuffle_available ()
       unsigned long,
       unsigned long long,
       float,
-      double>::value;
-  constexpr bool version_is_fine =
-    cuda::check_compute_capability<300> ();
-
-  return type_in_list && version_is_fine;
+      double>::value
+ && cuda::check_compute_capability<300> ();
 }
 
 template <

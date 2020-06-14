@@ -10,14 +10,40 @@
 #include <vector>
 #include <numeric>
 
+template <typename data_type, bool is_shfl_available>
+class compacter_helper;
+
+template <typename data_type>
+class compacter_helper<data_type, false>
+{
+public:
+  __device__ void operator ()(data_type const * const in, data_type * const out)
+  {
+    __shared__ data_type cache[32];
+    culib::warp::compact<data_type> compact (cache);
+    out[threadIdx.x] = compact (in[threadIdx.x], [] (const data_type &value) -> bool { return value > 2; });
+  }
+};
+
+template <typename data_type>
+class compacter_helper<data_type, true>
+{
+public:
+  __device__ void operator ()(data_type const * const in, data_type * const out)
+  {
+    culib::warp::compact<data_type> compact;
+    out[threadIdx.x] = compact (in[threadIdx.x], [] (const data_type &value) -> bool { return value > 2; });
+  }
+};
+
 template <typename data_type>
 class compacter
 {
 public:
   __device__ void operator () (data_type const * const in, data_type * const out)
   {
-    culib::warp::compact<data_type> compact;
-    out[threadIdx.x] = compact (in[threadIdx.x], [] (const data_type &value) -> bool { return value > 2; });
+    compacter_helper<data_type, culib::warp::is_shuffle_available<data_type> ()> helper;
+    helper (in, out);
   }
 };
 

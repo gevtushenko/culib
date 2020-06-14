@@ -18,13 +18,14 @@ namespace details
 constexpr unsigned int max_blocks_count = 1024;
 constexpr unsigned int threads_per_block = 256;
 
+template <bool is_shuffle_available> __device__ constexpr unsigned int get_device_reduce_cache_size_helper ();
+template <> __device__ constexpr unsigned int get_device_reduce_cache_size_helper<true> () { return 32; }
+template <> __device__ constexpr unsigned int get_device_reduce_cache_size_helper<false> () { return threads_per_block; }
+
 template <typename data_type>
 __device__ constexpr unsigned int get_device_reduce_cache_size ()
 {
-  if (culib::warp::is_shuffle_available <data_type> ())
-    return 32;
-  else
-    return threads_per_block;
+  return get_device_reduce_cache_size_helper<culib::warp::is_shuffle_available <data_type> ()> ();
 }
 
 template <typename data_type, typename binary_operation>

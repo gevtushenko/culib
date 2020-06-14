@@ -10,14 +10,40 @@
 #include <vector>
 #include <numeric>
 
+template <typename data_type, bool is_shfl_available>
+class test_reducer_helper;
+
 template <typename data_type>
-class test_reducer
+class test_reducer_helper<data_type, false>
+{
+public:
+  __device__ void operator () (data_type const * const in, data_type * const out)
+  {
+    __shared__ data_type cache[32];
+    culib::warp::reduce<data_type> reduce (cache);
+    out[threadIdx.x] = reduce (in[threadIdx.x]);
+  }
+};
+
+template <typename data_type>
+class test_reducer_helper<data_type, true>
 {
 public:
   __device__ void operator () (data_type const * const in, data_type * const out)
   {
     culib::warp::reduce<data_type> reduce;
     out[threadIdx.x] = reduce (in[threadIdx.x]);
+  }
+};
+
+template <typename data_type>
+class test_reducer
+{
+public:
+  __device__ void operator () (data_type const * const in, data_type * const out)
+  {
+    test_reducer_helper<data_type, culib::warp::is_shuffle_available<data_type>()> reducer;
+    reducer (in, out);
   }
 };
 

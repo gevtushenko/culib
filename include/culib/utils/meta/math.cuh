@@ -12,13 +12,14 @@ namespace utils
 namespace math
 {
 
-constexpr __device__ unsigned int log2 (unsigned int n)
+template <unsigned int n>
+constexpr __device__ unsigned int log2 ()
 {
-  if (n < 2)
-    return 0;
-
-  return 1 + log2 (n / 2);
+  return 1 + log2<n / 2> ();
 }
+
+template<> constexpr __device__ unsigned int log2<0> () { return 0; }
+template<> constexpr __device__ unsigned int log2<1> () { return 0; }
 
 }
 }
