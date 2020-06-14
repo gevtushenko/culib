@@ -10,14 +10,40 @@
 #include <vector>
 #include <numeric>
 
+template <typename data_type, bool is_shfl_supported>
+class inclusive_scanner_helper;
+
 template <typename data_type>
-class inclusive_scanner
+class inclusive_scanner_helper<data_type, false>
+{
+public:
+  __device__ void operator () (data_type const * const in, data_type * const out)
+  {
+    __shared__ data_type cache[32];
+    culib::warp::scan<data_type> scan (cache);
+    out[threadIdx.x] = scan.inclusive (in[threadIdx.x]);
+  }
+};
+
+template <typename data_type>
+class inclusive_scanner_helper<data_type, true>
 {
 public:
   __device__ void operator () (data_type const * const in, data_type * const out)
   {
     culib::warp::scan<data_type> scan;
     out[threadIdx.x] = scan.inclusive (in[threadIdx.x]);
+  }
+};
+
+template <typename data_type>
+class inclusive_scanner
+{
+public:
+  __device__ void operator () (data_type const * const in, data_type * const out)
+  {
+    inclusive_scanner_helper<data_type, culib::warp::is_shuffle_available<data_type>()> scanner;
+    scanner (in, out);
   }
 };
 
@@ -44,14 +70,40 @@ void perform_inclusive_scan_test ()
 TEST(warp_scan, inclusive_int) { perform_inclusive_scan_test<int> (); }
 // TEST(warp_scan, double) { perform_scan_test<double> (); }
 
+template <typename data_type, bool is_shfl_supported>
+class test_exclusive_scanner_helper;
+
 template <typename data_type>
-class test_exclusive_scanner
+class test_exclusive_scanner_helper<data_type, false>
+{
+public:
+  __device__ void operator () (data_type const * const in, data_type * const out)
+  {
+    __shared__ data_type cache[32];
+    culib::warp::scan<data_type> scan (cache);
+    out[threadIdx.x] = scan.exclusive (in[threadIdx.x]);
+  }
+};
+
+template <typename data_type>
+class test_exclusive_scanner_helper<data_type, true>
 {
 public:
   __device__ void operator () (data_type const * const in, data_type * const out)
   {
     culib::warp::scan<data_type> scan;
     out[threadIdx.x] = scan.exclusive (in[threadIdx.x]);
+  }
+};
+
+template <typename data_type>
+class test_exclusive_scanner
+{
+public:
+  __device__ void operator () (data_type const * const in, data_type * const out)
+  {
+    test_exclusive_scanner_helper<data_type, culib::warp::is_shuffle_available<data_type>()> scanner;
+    scanner (in, out);
   }
 };
 
@@ -78,8 +130,24 @@ void perform_exclusive_scan_test ()
 
 TEST(warp_scan, exclusive_int) { perform_exclusive_scan_test<int> (); }
 
+template <typename data_type, bool is_shfl_supported>
+class test_exclusive_scanner_max_helper;
+
 template <typename data_type>
-class test_exclusive_scanner_max
+class test_exclusive_scanner_max_helper<data_type, false>
+{
+public:
+  __device__ void operator () (data_type const * const in, data_type * const out)
+  {
+    using namespace culib;
+    __shared__ data_type cache[32];
+    warp::scan<data_type> scan (cache);
+    out[threadIdx.x] = scan.exclusive (in[threadIdx.x], binary_op::max<data_type> {});
+  }
+};
+
+template <typename data_type>
+class test_exclusive_scanner_max_helper<data_type, true>
 {
 public:
   __device__ void operator () (data_type const * const in, data_type * const out)
@@ -87,6 +155,17 @@ public:
     using namespace culib;
     warp::scan<data_type> scan;
     out[threadIdx.x] = scan.exclusive (in[threadIdx.x], binary_op::max<data_type> {});
+  }
+};
+
+template <typename data_type>
+class test_exclusive_scanner_max
+{
+public:
+  __device__ void operator () (data_type const * const in, data_type * const out)
+  {
+    test_exclusive_scanner_max_helper<data_type, culib::warp::is_shuffle_available<data_type>()> scanner;
+    scanner (in, out);
   }
 };
 

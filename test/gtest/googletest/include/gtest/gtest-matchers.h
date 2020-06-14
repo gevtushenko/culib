@@ -187,7 +187,7 @@ class MatcherInterfaceAdapter : public MatcherInterface<const T&> {
  public:
   explicit MatcherInterfaceAdapter(const MatcherInterface<T>* impl)
       : impl_(impl) {}
-  ~MatcherInterfaceAdapter() override { delete impl_; }
+  ~MatcherInterfaceAdapter() { delete impl_; }
 
   void DescribeTo(::std::ostream* os) const override { impl_->DescribeTo(os); }
 

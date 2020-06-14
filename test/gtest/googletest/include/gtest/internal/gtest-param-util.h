@@ -207,7 +207,7 @@ class RangeGenerator : public ParamGeneratorInterface<T> {
   RangeGenerator(T begin, T end, IncrementT step)
       : begin_(begin), end_(end),
         step_(step), end_index_(CalculateEndIndex(begin, end, step)) {}
-  ~RangeGenerator() override {}
+  ~RangeGenerator() {}
 
   ParamIteratorInterface<T>* Begin() const override {
     return new Iterator(this, begin_, 0, step_);
@@ -222,7 +222,7 @@ class RangeGenerator : public ParamGeneratorInterface<T> {
     Iterator(const ParamGeneratorInterface<T>* base, T value, int index,
              IncrementT step)
         : base_(base), value_(value), index_(index), step_(step) {}
-    ~Iterator() override {}
+    ~Iterator() {}
 
     const ParamGeneratorInterface<T>* BaseGenerator() const override {
       return base_;
@@ -292,7 +292,7 @@ class ValuesInIteratorRangeGenerator : public ParamGeneratorInterface<T> {
   template <typename ForwardIterator>
   ValuesInIteratorRangeGenerator(ForwardIterator begin, ForwardIterator end)
       : container_(begin, end) {}
-  ~ValuesInIteratorRangeGenerator() override {}
+  ~ValuesInIteratorRangeGenerator() {}
 
   ParamIteratorInterface<T>* Begin() const override {
     return new Iterator(this, container_.begin());
@@ -309,7 +309,7 @@ class ValuesInIteratorRangeGenerator : public ParamGeneratorInterface<T> {
     Iterator(const ParamGeneratorInterface<T>* base,
              typename ContainerType::const_iterator iterator)
         : base_(base), iterator_(iterator) {}
-    ~Iterator() override {}
+    ~Iterator() {}
 
     const ParamGeneratorInterface<T>* BaseGenerator() const override {
       return base_;
@@ -731,7 +731,7 @@ namespace internal {
 template <typename... Ts>
 class ValueArray {
  public:
-  ValueArray(Ts... v) : v_{std::move(v)...} {}
+  ValueArray(Ts... v) : v_ (std::move(v)...) {}
 
   template <typename T>
   operator ParamGenerator<T>() const {  // NOLINT
@@ -749,13 +749,13 @@ class ValueArray {
 
 template <typename... T>
 class CartesianProductGenerator
-    : public ParamGeneratorInterface<::std::tuple<T...>> {
+    : public ParamGeneratorInterface<std::tuple<T...>> {
  public:
-  typedef ::std::tuple<T...> ParamType;
+  typedef std::tuple<T...> ParamType;
 
   CartesianProductGenerator(const std::tuple<ParamGenerator<T>...>& g)
       : generators_(g) {}
-  ~CartesianProductGenerator() override {}
+  ~CartesianProductGenerator() {}
 
   ParamIteratorInterface<ParamType>* Begin() const override {
     return new Iterator(this, generators_, false);
@@ -779,7 +779,7 @@ class CartesianProductGenerator
           current_(is_end ? end_ : begin_) {
       ComputeCurrentValue();
     }
-    ~IteratorImpl() override {}
+    ~IteratorImpl() {}
 
     const ParamGeneratorInterface<ParamType>* BaseGenerator() const override {
       return base_;
@@ -868,8 +868,8 @@ class CartesianProductHolder {
  public:
   CartesianProductHolder(const Gen&... g) : generators_(g...) {}
   template <typename... T>
-  operator ParamGenerator<::std::tuple<T...>>() const {
-    return ParamGenerator<::std::tuple<T...>>(
+  operator ParamGenerator<std::tuple<T...>>() const {
+    return ParamGenerator<std::tuple<T...>>(
         new CartesianProductGenerator<T...>(generators_));
   }
 

@@ -44,7 +44,7 @@ public:
   unsigned long long int y {};
 
 public:
-  user_type () = default;
+  __device__ __host__ user_type () {}
   explicit __device__ __host__ user_type (int i) : x (i), y (0ull) {}
   __device__ __host__ user_type (unsigned long long int x_arg, unsigned long long int y_arg) : x (x_arg), y (y_arg) {}
 
