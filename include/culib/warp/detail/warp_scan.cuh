@@ -81,7 +81,7 @@ public:
   __device__ data_type scan_value (data_type val, binary_operation binary_op)
   {
     warp_shared_workspace[lid] = val;
-    __syncwarp ();
+    culib::warp::sync ();
 
     for (unsigned step = 0; step < utils::math::log2 (warp_size); step++)
       {
@@ -89,15 +89,15 @@ public:
 
         if (lid >= offset)
           val = binary_op (warp_shared_workspace[lid - offset], val);
-        __syncwarp ();
+        culib::warp::sync ();
 
         if (lid >= offset)
           warp_shared_workspace[lid] = val;
-        __syncwarp ();
+        culib::warp::sync ();
       }
 
     data_type result = warp_shared_workspace[lid];
-    __syncwarp ();
+    culib::warp::sync ();
     return result;
   }
 

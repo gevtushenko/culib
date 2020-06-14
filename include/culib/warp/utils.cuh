@@ -28,6 +28,14 @@ unsigned int lane_id ()
   return ret;
 }
 
+inline __device__
+void sync ()
+{
+#if __CUDACC_VER_MAJOR >= 9
+  __syncwarp ();
+#endif
+}
+
 /**
  * Check if specified data_type is supported by warp shuffle functions.
  */

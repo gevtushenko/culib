@@ -51,21 +51,21 @@ public:
   {
     const int lid = lane_id();
     warp_shared_workspace[lid] = val;
-    __syncwarp();
+    culib::warp::sync ();
 
     for (int s = warp_size / 2; s > 0; s >>= 1)
     {
       if (lid < s)
         val = binary_op (warp_shared_workspace[lid + s], val);
-      __syncwarp ();
+      culib::warp::sync ();
 
       if (lid < s)
         warp_shared_workspace[lid] = val;
-      __syncwarp ();
+      culib::warp::sync ();
     }
 
     data_type result = warp_shared_workspace[0];
-    __syncwarp ();
+    culib::warp::sync ();
     return result;
   }
 

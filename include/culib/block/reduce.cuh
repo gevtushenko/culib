@@ -75,7 +75,7 @@ public:
     if (wid == 0)
       {
         if (warp_reducer::use_shared_memory)
-          __syncwarp (); /// Cache could be modified without sync in code below
+          culib::warp::sync ();
         val = warp_reduce (val, binary_op);
       }
 

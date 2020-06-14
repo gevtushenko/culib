@@ -28,4 +28,4 @@ void perform_device_reduce_test (size_t elements_count)
   cudaFree (d_in);
 }
 
-TEST(device_reduce, multiple_blocks_int) { perform_device_reduce_test<int> (100'000); }
+TEST(device_reduce, multiple_blocks_int) { perform_device_reduce_test<int> (100000); }
