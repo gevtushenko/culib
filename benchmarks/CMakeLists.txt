@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.11)
 project(culib_benchmarks CXX CUDA)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 11)
 
 # Library
 add_executable(${PROJECT_NAME} src/main.cu include/results.h src/results.cpp)

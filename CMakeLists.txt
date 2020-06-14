@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 project(culib)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 11)
 
 # culib version
 find_package(Git QUIET)
