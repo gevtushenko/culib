@@ -6,9 +6,9 @@
 #include "test_helper.cuh"
 
 #include "culib/warp/scan.cuh"
+#include "culib/utils/placeholder.h"
 
 #include <vector>
-#include <numeric>
 
 template <typename data_type, bool is_shfl_supported>
 class inclusive_scanner_helper;
@@ -205,7 +205,7 @@ public:
   __device__ void operator () (data_type const * const in, data_type * const out)
   {
     constexpr size_t warp_size = 32;
-    __shared__ char cache[warp_size * sizeof (user_type)];
+    __shared__ culib::utils::placeholder<data_type> cache[warp_size];
     culib::warp::scan<data_type> scan (reinterpret_cast<user_type *> (cache));
     out[threadIdx.x] = scan.exclusive (in[threadIdx.x]);
   }
