@@ -12,6 +12,7 @@ target_sources(${PROJECT_NAME}
             include/test_helper.cuh
             src/block/reduce_test.cu
             src/device/reduce_test.cu
+            src/device/pointer_test.cu
             src/warp/compact_test.cu
             src/warp/reduce_test.cu
             src/warp/scan_test.cu)

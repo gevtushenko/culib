@@ -25,6 +25,8 @@ add_library(${PROJECT_NAME} INTERFACE)
 target_sources(${PROJECT_NAME}
         INTERFACE
             include/culib/warp/scan.cuh
+            include/culib/device/memory/pointer.h
+            include/culib/device/memory/api.h
             include/culib/device/scan.cuh
             include/culib/device/reduce.cuh
             include/culib/node/reduce.cuh
