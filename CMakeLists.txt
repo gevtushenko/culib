@@ -23,25 +23,26 @@ find_package(CUDA REQUIRED)
 # Library
 add_library(${PROJECT_NAME} INTERFACE)
 target_sources(${PROJECT_NAME}
-        INTERFACE
-            include/culib/warp/scan.cuh
-            include/culib/device/memory/pointer.h
-            include/culib/device/memory/api.h
-            include/culib/device/scan.cuh
-            include/culib/device/reduce.cuh
-            include/culib/node/reduce.cuh
-            include/culib/warp/reduce.cuh
-            include/culib/warp/detail/warp_reduce.cuh
-            include/culib/warp/detail/warp_shuffle.cuh
-            include/culib/warp/utils.cuh
-            include/culib/warp/shuffle.cuh
-            include/culib/warp/compact.cuh
-            include/culib/block/reduce.cuh
-            include/culib/utils/meta/any.cuh
-            include/culib/utils/meta/binary_ops.cuh
-            include/culib/utils/meta/math.cuh
-            include/culib/utils/meta/limits.cuh
-            include/culib/warp/detail/warp_scan.cuh)
+    INTERFACE
+        include/culib/warp/scan.cuh
+        include/culib/device/memory/resizable_array.h
+        include/culib/device/memory/pointer.h
+        include/culib/device/memory/api.h
+        include/culib/device/scan.cuh
+        include/culib/device/reduce.cuh
+        include/culib/node/reduce.cuh
+        include/culib/warp/reduce.cuh
+        include/culib/warp/detail/warp_reduce.cuh
+        include/culib/warp/detail/warp_shuffle.cuh
+        include/culib/warp/utils.cuh
+        include/culib/warp/shuffle.cuh
+        include/culib/warp/compact.cuh
+        include/culib/block/reduce.cuh
+        include/culib/utils/meta/any.cuh
+        include/culib/utils/meta/binary_ops.cuh
+        include/culib/utils/meta/math.cuh
+        include/culib/utils/meta/limits.cuh
+        include/culib/warp/detail/warp_scan.cuh)
 
 target_include_directories(${PROJECT_NAME}
         INTERFACE
