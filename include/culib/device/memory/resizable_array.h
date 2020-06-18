@@ -38,6 +38,12 @@ public:
     return allocated;
   }
 
+  data_type *release ()
+  {
+    size = allocated = 0;
+    return memory.release ();
+  }
+
   bool resize (std::size_t new_size, bool preserve_old_memory = true) noexcept
   {
     if (new_size > allocated)

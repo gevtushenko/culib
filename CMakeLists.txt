@@ -30,6 +30,7 @@ target_sources(${PROJECT_NAME}
         include/culib/device/memory/api.h
         include/culib/device/scan.cuh
         include/culib/device/reduce.cuh
+        include/culib/node/communication.h
         include/culib/node/reduce.cuh
         include/culib/warp/reduce.cuh
         include/culib/warp/detail/warp_reduce.cuh

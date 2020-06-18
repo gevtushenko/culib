@@ -14,6 +14,7 @@ target_sources(${PROJECT_NAME}
         src/device/reduce_test.cu
         src/device/resizable_array_test.cu
         src/device/pointer_test.cu
+        src/node/communication_test.cu
         src/warp/compact_test.cu
         src/warp/reduce_test.cu
         src/warp/scan_test.cu)

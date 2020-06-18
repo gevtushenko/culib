@@ -60,6 +60,12 @@ data_type recv (const data_type *src) noexcept (false)
   return tmp;
 }
 
+template <typename data_type>
+void send (const data_type &src, data_type *dst) noexcept (false)
+{
+  send_n (&src, 1, dst);
+}
+
 }
 }
 
