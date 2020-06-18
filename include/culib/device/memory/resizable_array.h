@@ -19,6 +19,7 @@ template <typename data_type>
 class resizable_array
 {
   std::size_t size {};
+  std::size_t allocated {};
   pointer<data_type> memory;
 
 public:
@@ -32,9 +33,14 @@ public:
     return size;
   }
 
+  std::size_t get_allocated () const
+  {
+    return allocated;
+  }
+
   bool resize (std::size_t new_size, bool preserve_old_memory = true) noexcept
   {
-    if (new_size > size)
+    if (new_size > allocated)
       {
         pointer<data_type> new_memory;
         try {
@@ -61,9 +67,10 @@ public:
         catch (...) {
             return false;
           }
-
-        size = new_size;
+        allocated = new_size;
       }
+
+    size = new_size;
 
     return true;
   }

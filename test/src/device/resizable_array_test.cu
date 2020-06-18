@@ -20,6 +20,7 @@ TEST(resizable_array, allocate)
   EXPECT_EQ (success, true); // Should be enough memory for 1 int
   EXPECT_NE (array.get (), nullptr);
   EXPECT_EQ (array.get_size (), 1u);
+  EXPECT_EQ (array.get_allocated (), 1u);
 }
 
 TEST(resizable_array, resize_with_preserving)
@@ -30,6 +31,7 @@ TEST(resizable_array, resize_with_preserving)
   array_t array;
   array.resize (first_size);
   EXPECT_EQ (array.get_size (), first_size);
+  EXPECT_EQ (array.get_allocated (), first_size);
 
   const int magic_value = 42;
   culib::device::send_n (&magic_value, 1, array.get ());
@@ -37,6 +39,44 @@ TEST(resizable_array, resize_with_preserving)
 
   EXPECT_NE (array.get (), nullptr);
   EXPECT_EQ (array.get_size (), second_size);
+  EXPECT_EQ (array.get_allocated (), second_size);
 
   EXPECT_EQ (culib::device::recv (array.get ()), magic_value);
+}
+
+TEST(resizable_array, resize_without_preserving)
+{
+  const size_t first_size = 1;
+  const size_t second_size = 2;
+
+  array_t array;
+  array.resize (first_size);
+  EXPECT_EQ (array.get_size (), first_size);
+  EXPECT_EQ (array.get_allocated (), first_size);
+
+  auto first_ptr = array.get ();
+
+  array.resize (second_size, false);
+  EXPECT_NE (array.get (), nullptr);
+  EXPECT_NE (array.get (), first_ptr);
+  EXPECT_EQ (array.get_size (), second_size);
+  EXPECT_EQ (array.get_allocated (), second_size);
+}
+
+TEST(resizable_array, reduce_size)
+{
+  const size_t first_size = 2;
+  const size_t second_size = 1;
+
+  array_t array;
+  array.resize (first_size);
+  EXPECT_EQ (array.get_size (), first_size);
+
+  auto first_ptr = array.get ();
+
+  array.resize (second_size, false);
+  EXPECT_NE (array.get (), nullptr);
+  EXPECT_EQ (array.get (), first_ptr);
+  EXPECT_EQ (array.get_size (), second_size);
+  EXPECT_EQ (array.get_allocated (), first_size);
 }
