@@ -16,7 +16,7 @@ atomic_threads_synchronizer::atomic_threads_synchronizer (unsigned int threads_c
   , buffer (new void *[threads_count])
 { }
 
-void atomic_threads_synchronizer::barrier()
+void atomic_threads_synchronizer::barrier () const
 {
   const unsigned int thread_epoch = barrier_epoch.load ();
 

@@ -43,9 +43,9 @@ public:
   }
 
   template<typename data_type>
-  data_type host_reduce_sum (data_type value)
+  data_type host_reduce_sum (data_type value) const
   {
-    node_comm.host_reduce_sum (gpu_id, value);
+    return node_comm.host_reduce_sum (gpu_id, value);
   }
 
 protected:
@@ -62,12 +62,12 @@ protected:
 class atomic_threads_synchronizer
 {
   const unsigned int total_threads {};
-  std::atomic<unsigned int> barrier_epoch;
-  std::atomic<unsigned int> threads_in_barrier;
-  std::unique_ptr<void*[]> buffer;
+  mutable std::atomic<unsigned int> barrier_epoch;
+  mutable std::atomic<unsigned int> threads_in_barrier;
+  mutable std::unique_ptr<void*[]> buffer;
 
   template<typename data_type>
-  data_type &get_buffer (unsigned int thread_id)
+  data_type &get_buffer (unsigned int thread_id) const
   {
     return *reinterpret_cast<data_type*> (buffer[thread_id]);
   }
@@ -77,7 +77,7 @@ public:
   explicit atomic_threads_synchronizer (unsigned int threads_count);
 
   template<typename data_type>
-  data_type reduce_sum (unsigned int thread_id, data_type value)
+  data_type reduce_sum (unsigned int thread_id, data_type value) const
   {
     const unsigned int main_thread = 0;
     buffer[thread_id] = &value;
@@ -94,7 +94,7 @@ public:
     return value;
   }
 
-  void barrier ();
+  void barrier () const;
 };
 
 template <class sync_policy = atomic_threads_synchronizer>
@@ -104,7 +104,7 @@ class node_communicator : protected sync_policy
 
 protected:
   template<typename data_type>
-  data_type host_reduce_sum (unsigned int gpu_id, data_type value)
+  data_type host_reduce_sum (unsigned int gpu_id, data_type value) const
   {
     return sync_policy::reduce_sum (gpu_id, value);
   }
@@ -169,6 +169,8 @@ public:
 
     return { device_id, *this };
   }
+
+  friend class device_communicator<sync_policy>;
 };
 
 }
