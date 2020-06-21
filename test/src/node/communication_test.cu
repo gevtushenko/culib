@@ -41,6 +41,30 @@ TEST(node_communication, atomic_barrier)
     thread.join ();
 }
 
+TEST(node_communication, reduce)
+{
+  std::vector<std::thread> threads;
+
+  const unsigned int steps_count = 100;
+  const unsigned int threads_count = std::thread::hardware_concurrency ();
+  culib::node::atomic_threads_synchronizer sync (threads_count);
+
+  for (unsigned int thread_id = 0; thread_id < threads_count; thread_id++)
+    {
+      threads.push_back (std::thread ([&,thread_id] () {
+        for (unsigned int step = 0; step < steps_count; step++)
+          {
+            const unsigned int thread_value = 1;
+            const unsigned int reduce_result = sync.reduce_sum (thread_id, thread_value);
+            EXPECT_EQ (reduce_result, threads_count);
+          }
+      }));
+    }
+
+  for (auto &thread: threads)
+    thread.join ();
+}
+
 TEST(node_communication, put)
 {
   int n = 42;
@@ -63,7 +87,7 @@ TEST(node_communication, put)
         for (int tid = 0; tid < devices_count; tid++)
           {
             threads.push_back (std::thread ([tid, n, &node_comm, &src, &dst] () {
-              culib::node::device_communicator comm = node_comm.get_comm (tid);
+              auto comm = node_comm.get_comm (tid);
               cudaSetDevice (comm.get_gpu_id ());
 
               culib::device::resizable_array<data_type> buffer_to_send; buffer_to_send.resize (n);
@@ -83,7 +107,7 @@ TEST(node_communication, put)
         for (int tid = 0; tid < devices_count; tid++)
           {
             threads.push_back (std::thread ([tid, n, devices_count, &node_comm, &src, &dst] () {
-              culib::node::device_communicator comm = node_comm.get_comm (tid);
+              auto comm = node_comm.get_comm (tid);
               cudaSetDevice (comm.get_gpu_id ());
 
               // send to the right
@@ -107,7 +131,7 @@ TEST(node_communication, put)
         for (int tid = 0; tid < devices_count; tid++)
           {
             threads.push_back (std::thread ([tid, n, devices_count, &node_comm, &src, &dst] () {
-              culib::node::device_communicator comm = node_comm.get_comm (tid);
+              auto comm = node_comm.get_comm (tid);
               cudaSetDevice (comm.get_gpu_id ());
 
               data_type *result_ptr = dst[comm.get_gpu_id ()];
@@ -133,7 +157,7 @@ TEST(node_communication, put)
         for (int tid = 0; tid < devices_count; tid++)
           {
             threads.push_back (std::thread ([tid, n, &node_comm, &src, &dst] () {
-              culib::node::device_communicator comm = node_comm.get_comm (tid);
+              auto comm = node_comm.get_comm (tid);
               cudaSetDevice (comm.get_gpu_id ());
 
               culib::device::pointer<data_type> dst_ptr (dst[comm.get_gpu_id ()]);
@@ -169,7 +193,7 @@ TEST(node_communication, get)
         for (int tid = 0; tid < devices_count; tid++)
           {
             threads.push_back (std::thread ([tid, n, &node_comm, &src, &dst] () {
-              culib::node::device_communicator comm = node_comm.get_comm (tid);
+              auto comm = node_comm.get_comm (tid);
               cudaSetDevice (comm.get_gpu_id ());
 
               culib::device::resizable_array<data_type> buffer_to_send; buffer_to_send.resize (n);
@@ -189,7 +213,7 @@ TEST(node_communication, get)
         for (int tid = 0; tid < devices_count; tid++)
           {
             threads.push_back (std::thread ([tid, n, devices_count, &node_comm, &src, &dst] () {
-              culib::node::device_communicator comm = node_comm.get_comm (tid);
+              auto comm = node_comm.get_comm (tid);
               cudaSetDevice (comm.get_gpu_id ());
 
               // send to the right
@@ -210,7 +234,7 @@ TEST(node_communication, get)
         for (int tid = 0; tid < devices_count; tid++)
           {
             threads.push_back (std::thread ([tid, n, devices_count, &node_comm, &src, &dst] () {
-              culib::node::device_communicator comm = node_comm.get_comm (tid);
+              auto comm = node_comm.get_comm (tid);
               cudaSetDevice (comm.get_gpu_id ());
 
               data_type *src_ptr = src[(comm.get_gpu_id () + 1) % devices_count];
@@ -240,7 +264,7 @@ TEST(node_communication, get)
         for (int tid = 0; tid < devices_count; tid++)
           {
             threads.push_back (std::thread ([tid, n, &node_comm, &src, &dst] () {
-              culib::node::device_communicator comm = node_comm.get_comm (tid);
+              auto comm = node_comm.get_comm (tid);
               cudaSetDevice (comm.get_gpu_id ());
 
               culib::device::pointer<data_type> dst_ptr (dst[comm.get_gpu_id ()]);

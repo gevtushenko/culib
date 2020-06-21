@@ -9,6 +9,7 @@
 
 #include <vector>
 #include <atomic>
+#include <memory>
 
 namespace culib
 {
@@ -18,9 +19,12 @@ namespace node
 template <class sync_policy>
 class node_communicator;
 
+template <class sync_policy>
 class device_communicator
 {
   const int gpu_id {};
+  const node_communicator<sync_policy> &node_comm;
+
 public:
   device_communicator () = delete;
 
@@ -38,13 +42,21 @@ public:
     culib::device::copy_n (src, n, dst);
   }
 
+  template<typename data_type>
+  data_type host_reduce_sum (data_type value)
+  {
+    node_comm.host_reduce_sum (gpu_id, value);
+  }
+
 protected:
-  explicit device_communicator (int gpu_id_arg)
+  device_communicator (
+    int gpu_id_arg,
+    const node_communicator<sync_policy> &node_comm_arg)
     : gpu_id (gpu_id_arg)
+    , node_comm (node_comm_arg)
   { }
 
-  template <class sync_policy>
-  friend class node_communicator;
+  friend class node_communicator<sync_policy>;
 };
 
 class atomic_threads_synchronizer
@@ -52,18 +64,50 @@ class atomic_threads_synchronizer
   const unsigned int total_threads {};
   std::atomic<unsigned int> barrier_epoch;
   std::atomic<unsigned int> threads_in_barrier;
+  std::unique_ptr<void*[]> buffer;
+
+  template<typename data_type>
+  data_type &get_buffer (unsigned int thread_id)
+  {
+    return *reinterpret_cast<data_type*> (buffer[thread_id]);
+  }
 
 public:
   atomic_threads_synchronizer () = delete;
   explicit atomic_threads_synchronizer (unsigned int threads_count);
 
+  template<typename data_type>
+  data_type reduce_sum (unsigned int thread_id, data_type value)
+  {
+    const unsigned int main_thread = 0;
+    buffer[thread_id] = &value;
+    barrier ();
+
+    if (thread_id == main_thread)
+      for (unsigned int thread = main_thread + 1; thread < total_threads; thread++)
+        value += get_buffer<data_type> (thread);
+
+    barrier ();
+    value = get_buffer<data_type> (main_thread);
+    barrier ();
+
+    return value;
+  }
+
   void barrier ();
 };
 
 template <class sync_policy = atomic_threads_synchronizer>
-class node_communicator : public sync_policy
+class node_communicator : protected sync_policy
 {
   const std::vector<int> gpu_ids;
+
+protected:
+  template<typename data_type>
+  data_type host_reduce_sum (unsigned int gpu_id, data_type value)
+  {
+    return sync_policy::reduce_sum (gpu_id, value);
+  }
 
 public:
   node_communicator () = delete;
@@ -113,7 +157,7 @@ public:
       }
   }
 
-  device_communicator get_comm (int thread_id) const noexcept(false)
+  device_communicator<sync_policy> get_comm (int thread_id) const noexcept(false)
   {
     if (thread_id >= static_cast<int> (gpu_ids.size ()))
       throw std::runtime_error ("culib: communicator was created for " +
@@ -123,7 +167,7 @@ public:
     if (cudaSetDevice (device_id) != cudaSuccess)
       throw std::runtime_error ("culib: can't set device " + std::to_string (device_id));
 
-    return device_communicator (device_id);
+    return { device_id, *this };
   }
 };
 

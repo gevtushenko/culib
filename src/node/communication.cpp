@@ -13,6 +13,7 @@ atomic_threads_synchronizer::atomic_threads_synchronizer (unsigned int threads_c
   : total_threads (threads_count)
   , barrier_epoch (0u)
   , threads_in_barrier (0u)
+  , buffer (new void *[threads_count])
 { }
 
 void atomic_threads_synchronizer::barrier()
