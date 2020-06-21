@@ -7,8 +7,39 @@
 
 #include <vector>
 #include <thread>
+#include <atomic>
 
 using data_type = int;
+
+TEST(node_communication, atomic_barrier)
+{
+  std::atomic<unsigned int> counter (0);
+  std::vector<std::thread> threads;
+
+  const unsigned int steps_count = 100;
+  const unsigned int threads_count = std::thread::hardware_concurrency ();
+  culib::node::atomic_threads_synchronizer sync (threads_count);
+
+  for (unsigned int thread_id = 0; thread_id < threads_count; thread_id++)
+    {
+      threads.push_back (std::thread ([&] () {
+        for (unsigned int step = 0; step < steps_count; step++)
+          {
+            counter.fetch_add (1);
+            sync.barrier ();
+            EXPECT_EQ (counter.load (), threads_count);
+            sync.barrier ();
+            counter.fetch_sub (1);
+            sync.barrier ();
+            EXPECT_EQ (counter.load (), 0u);
+            sync.barrier ();
+          }
+      }));
+    }
+
+  for (auto &thread: threads)
+    thread.join ();
+}
 
 TEST(node_communication, put)
 {
@@ -22,7 +53,7 @@ TEST(node_communication, put)
       for (int gpu = 0; gpu < devices_count; gpu++)
         devices.push_back (gpu);
 
-      culib::node::node_communicator node_comm (devices);
+      culib::node::node_communicator<> node_comm (devices);
       std::vector<data_type*> src (devices_count, nullptr);
       std::vector<data_type*> dst (devices_count, nullptr);
 
@@ -128,7 +159,7 @@ TEST(node_communication, get)
       for (int gpu = 0; gpu < devices_count; gpu++)
         devices.push_back (gpu);
 
-      culib::node::node_communicator node_comm (devices);
+      culib::node::node_communicator<> node_comm (devices);
       std::vector<data_type*> src (devices_count, nullptr);
       std::vector<data_type*> dst (devices_count, nullptr);
 

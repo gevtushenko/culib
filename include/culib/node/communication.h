@@ -8,13 +8,16 @@
 #include "culib/device/memory/api.h"
 
 #include <vector>
+#include <atomic>
 
 namespace culib
 {
 namespace node
 {
 
+template <class sync_policy>
 class node_communicator;
+
 class device_communicator
 {
   const int gpu_id {};
@@ -40,17 +43,33 @@ protected:
     : gpu_id (gpu_id_arg)
   { }
 
+  template <class sync_policy>
   friend class node_communicator;
 };
 
-class node_communicator
+class atomic_threads_synchronizer
+{
+  const unsigned int total_threads {};
+  std::atomic<unsigned int> barrier_epoch;
+  std::atomic<unsigned int> threads_in_barrier;
+
+public:
+  atomic_threads_synchronizer () = delete;
+  explicit atomic_threads_synchronizer (unsigned int threads_count);
+
+  void barrier ();
+};
+
+template <class sync_policy = atomic_threads_synchronizer>
+class node_communicator : public sync_policy
 {
   const std::vector<int> gpu_ids;
 
 public:
   node_communicator () = delete;
   node_communicator (const std::vector<int> &gpu_ids_arg)
-    : gpu_ids (gpu_ids_arg)
+    : sync_policy (gpu_ids_arg.size ())
+    , gpu_ids (gpu_ids_arg)
   {
     const std::string error_msg = "culib: p2p isn't supported";
 

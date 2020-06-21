@@ -21,9 +21,11 @@ configure_file("${PROJECT_SOURCE_DIR}/cmake/version.cuh.in" "${CMAKE_SOURCE_DIR}
 find_package(CUDA REQUIRED)
 
 # Library
-add_library(${PROJECT_NAME} INTERFACE)
+add_library(${PROJECT_NAME})
 target_sources(${PROJECT_NAME}
-    INTERFACE
+    PUBLIC
+        src/node/communication.cpp
+
         include/culib/warp/scan.cuh
         include/culib/device/memory/resizable_array.h
         include/culib/device/memory/pointer.h
@@ -46,7 +48,7 @@ target_sources(${PROJECT_NAME}
         include/culib/warp/detail/warp_scan.cuh)
 
 target_include_directories(${PROJECT_NAME}
-        INTERFACE
+        PUBLIC
             "${CUDA_INCLUDE_DIRS}"
             include)
 
