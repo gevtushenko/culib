@@ -40,6 +40,7 @@ target_sources(${PROJECT_NAME}
         include/culib/warp/utils.cuh
         include/culib/warp/shuffle.cuh
         include/culib/warp/compact.cuh
+        include/culib/block/histogram.cuh
         include/culib/block/reduce.cuh
         include/culib/utils/meta/any.cuh
         include/culib/utils/meta/binary_ops.cuh

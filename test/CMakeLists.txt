@@ -11,6 +11,7 @@ target_sources(${PROJECT_NAME}
         src/gtest_runner.cpp
         include/test_helper.cuh
         src/block/reduce_test.cu
+        src/block/histogram_test.cu
         src/device/reduce_test.cu
         src/device/resizable_array_test.cu
         src/device/pointer_test.cu
