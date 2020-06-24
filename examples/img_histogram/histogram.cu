@@ -1,11 +1,15 @@
 #include <png.h>
 #include <iostream>
 #include <fstream>
+#include <vector>
+#include <thread>
 #include <memory>
 
 #include "culib/device/histogram.cuh"
 #include "culib/device/memory/resizable_array.h"
 #include "culib/device/memory/api.h"
+
+constexpr unsigned int bins_count = 256;
 
 class img_class
 {
@@ -101,18 +105,120 @@ std::unique_ptr<img_class> read_png_file (char *filename)
   return std::unique_ptr<img_class> {new img_class (width, height, is_gray, row_size, std::move (raw_data))};
 }
 
+enum class calculation_mode
+{
+  cpu, cpu_mt, culib, cub, unknown
+};
+
+calculation_mode str_to_mode (const char *mode)
+{
+  if (strcmp (mode, "cpu") == 0)
+    return calculation_mode::cpu;
+  if (strcmp (mode, "cpu_mt") == 0)
+    return calculation_mode::cpu_mt;
+  else if (strcmp (mode, "culib") == 0)
+    return calculation_mode::culib;
+  else if (strcmp (mode, "cub") == 0)
+    return calculation_mode::cub;
+  return calculation_mode::unknown;
+}
+
+class result_class
+{
+public:
+  float elapsed {};
+  std::unique_ptr<unsigned int[]> data;
+};
+
+result_class cpu_hist (const img_class *img)
+{
+  result_class cpu_result;
+  cpu_result.data.reset (new unsigned int[bins_count]);
+
+  unsigned int *hist = cpu_result.data.get ();
+  std::fill_n (hist, bins_count, 0);
+
+  for (unsigned int i = 0; i < img->pixels_count; i++)
+    hist[img->data[i]]++;
+
+  return cpu_result;
+}
+
+result_class cpu_mt_hist (const img_class *img)
+{
+  result_class cpu_result;
+  cpu_result.data.reset (new unsigned int[bins_count]);
+
+  unsigned int *hist = cpu_result.data.get ();
+  std::fill_n (hist, bins_count, 0);
+
+  const unsigned int threads_count = std::thread::hardware_concurrency ();
+  const unsigned int chunk_size = img->pixels_count / threads_count;
+  std::vector<std::thread> threads;
+  std::unique_ptr<std::unique_ptr<unsigned int[]>[]> thread_buffers (new std::unique_ptr<unsigned int[]>[threads_count]);
+
+  for (unsigned int tid = 0; tid < threads_count; tid++)
+    {
+      threads.push_back(std::thread ([&,tid] () {
+        const unsigned int first_element = chunk_size * tid;
+        const unsigned int last_element = tid == threads_count - 1
+                                        ? img->pixels_count
+                                        : chunk_size * (tid + 1);
+
+        thread_buffers[tid].reset (new unsigned int[bins_count]);
+        unsigned int *thread_local_hist = thread_buffers[tid].get ();
+
+        for (unsigned int i = first_element; i < last_element; i++)
+          thread_local_hist[img->data[i]]++;
+      }));
+    }
+
+  for (auto &thread: threads)
+    thread.join ();
+
+  for (unsigned int tid = 0; tid < threads_count; tid++)
+    for (unsigned int bin = 0; bin < bins_count; bin++)
+      hist[bin] += thread_buffers[tid][bin];
+
+  return cpu_result;
+}
+
+result_class culib_hist (const img_class *img)
+{
+  result_class culib_result;
+
+  const unsigned int img_elements = img->row_size * img->height;
+  culib::device::resizable_array<unsigned int> result (bins_count);
+  culib::device::resizable_array<unsigned int> workspace (culib::device::histogram::get_gpu_workspace_size (bins_count, img->pixels_count));
+  culib::device::resizable_array<png_byte> device_img (img_elements);
+  culib::device::send_n (img->data.get (), img_elements, device_img.get ());
+  culib::device::histogram hist (workspace.get ());
+  hist (bins_count, img_elements, device_img.get (), result.get ());
+
+  culib_result.data.reset (new unsigned int[bins_count]);
+  culib::device::recv_n (result.get (), bins_count, culib_result.data.get ());
+  return culib_result;
+}
+
 int main (int argc, char *argv[])
 {
-  if (argc != 2)
+  if (argc != 3)
     {
-      std::cout << "Usage: " << argv[0] << " [bins count] [path to png file]";
+      std::cout << "Usage: " << argv[0] << " [mode: cpu || cpu_mt || culib || cub] [path to png file]";
       return 1;
     }
 
-  auto img = read_png_file (argv[1]);
+  const calculation_mode mode = str_to_mode (argv[1]);
+  if (mode == calculation_mode::unknown)
+    {
+      std::cerr << "Supported modes: cpu, culib, cub\n";
+      return 1;
+    }
+
+  auto img = read_png_file (argv[2]);
   if (!img)
     {
-      std::cerr << "Can't read " << argv[1] << "\n";
+      std::cerr << "Can't read " << argv[2] << "\n";
       return 1;
     }
 
@@ -122,23 +228,21 @@ int main (int argc, char *argv[])
       return 1;
     }
 
-
-  const unsigned int bins_count = 256;
-  const unsigned int img_elements = img->row_size * img->height;
-  culib::device::resizable_array<unsigned int> result (bins_count);
-  culib::device::resizable_array<unsigned int> workspace (culib::device::histogram::get_gpu_workspace_size (bins_count, img->pixels_count));
-  culib::device::resizable_array<png_byte> device_img (img_elements);
-  culib::device::send_n (img->data.get (), img_elements, device_img.get ());
-  culib::device::histogram hist (workspace.get ());
-  hist (bins_count, img_elements, device_img.get (), result.get ());
-
-  std::unique_ptr<unsigned int[]> host_result (new unsigned int[bins_count]);
-  culib::device::recv_n (result.get (), bins_count, host_result.get ());
+  result_class result = [&] ()
+  {
+    if (mode == calculation_mode::culib)
+      return culib_hist (img.get ());
+    else if (mode == calculation_mode::cpu)
+      return cpu_hist (img.get ());
+    else if (mode == calculation_mode::cpu_mt)
+      return cpu_mt_hist (img.get ());
+    return result_class {};
+  } ();
 
   std::ofstream os ("result.csv");
 
   for (unsigned int bin = 1; bin < bins_count; bin++)
-    os << host_result[bin] << "\n";
+    os << result.data[bin] << "\n";
 
   return 0;
 }
