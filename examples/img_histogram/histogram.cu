@@ -4,6 +4,7 @@
 #include <vector>
 #include <thread>
 #include <memory>
+#include <chrono>
 
 #include "culib/device/histogram.cuh"
 #include "culib/device/memory/resizable_array.h"
@@ -135,11 +136,14 @@ result_class cpu_hist (const img_class *img)
   result_class cpu_result;
   cpu_result.data.reset (new unsigned int[bins_count]);
 
+  auto begin = std::chrono::high_resolution_clock::now ();
   unsigned int *hist = cpu_result.data.get ();
   std::fill_n (hist, bins_count, 0);
 
   for (unsigned int i = 0; i < img->pixels_count; i++)
     hist[img->data[i]]++;
+  auto end = std::chrono::high_resolution_clock::now ();
+  cpu_result.elapsed = std::chrono::duration_cast<std::chrono::duration<double>> (end - begin).count ();
 
   return cpu_result;
 }
@@ -149,6 +153,7 @@ result_class cpu_mt_hist (const img_class *img)
   result_class cpu_result;
   cpu_result.data.reset (new unsigned int[bins_count]);
 
+  auto begin = std::chrono::high_resolution_clock::now ();
   unsigned int *hist = cpu_result.data.get ();
   std::fill_n (hist, bins_count, 0);
 
@@ -180,6 +185,9 @@ result_class cpu_mt_hist (const img_class *img)
     for (unsigned int bin = 0; bin < bins_count; bin++)
       hist[bin] += thread_buffers[tid][bin];
 
+  auto end = std::chrono::high_resolution_clock::now ();
+  cpu_result.elapsed = std::chrono::duration_cast<std::chrono::duration<double>> (end - begin).count ();
+
   return cpu_result;
 }
 
@@ -192,11 +200,24 @@ result_class culib_hist (const img_class *img)
   culib::device::resizable_array<unsigned int> workspace (culib::device::histogram::get_gpu_workspace_size (bins_count, img->pixels_count));
   culib::device::resizable_array<png_byte> device_img (img_elements);
   culib::device::send_n (img->data.get (), img_elements, device_img.get ());
+
+  cudaEvent_t begin, end;
+  cudaEventCreate (&begin);
+  cudaEventCreate (&end);
+
+  cudaEventRecord(begin);
   culib::device::histogram hist (workspace.get ());
   hist (bins_count, img_elements, device_img.get (), result.get ());
+  cudaEventRecord(end);
+  cudaEventSynchronize(end);
 
   culib_result.data.reset (new unsigned int[bins_count]);
   culib::device::recv_n (result.get (), bins_count, culib_result.data.get ());
+
+  cudaEventElapsedTime (&culib_result.elapsed, begin, end);
+  culib_result.elapsed /= 1000;
+  cudaEventDestroy(begin);
+  cudaEventDestroy(end);
   return culib_result;
 }
 
@@ -239,8 +260,9 @@ int main (int argc, char *argv[])
     return result_class {};
   } ();
 
-  std::ofstream os ("result.csv");
+  std::cout << "Complete in " << result.elapsed << "s\n";
 
+  std::ofstream os ("result.csv");
   for (unsigned int bin = 1; bin < bins_count; bin++)
     os << result.data[bin] << "\n";
 
