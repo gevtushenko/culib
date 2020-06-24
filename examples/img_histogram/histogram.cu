@@ -13,6 +13,8 @@
 #include "culib/device/memory/resizable_array.h"
 #include "culib/device/memory/api.h"
 
+#include "cub/cub.cuh"
+
 constexpr unsigned int bins_count = 256;
 
 class img_class
@@ -324,6 +326,54 @@ result_class culib_hist (const img_class *img)
   return culib_result;
 }
 
+result_class cub_hist (const img_class *img)
+{
+  result_class cub_result;
+
+  int num_samples = img->pixels_count;
+  int num_levels = 257;
+  int num_bins = num_levels - 1;
+  int lower_level = 0;
+  int upper_level = 256;
+
+  culib::device::resizable_array<unsigned int> device_histogram (num_bins);
+  culib::device::resizable_array<png_byte> device_img (num_samples);
+  culib::device::send_n (img->data.get (), num_samples, device_img.get ());
+
+  size_t temp_storage_bytes {};
+
+  cub::DeviceHistogram::HistogramEven (
+    nullptr, temp_storage_bytes,
+    device_img.get (), device_histogram.get (),
+    num_levels, lower_level, upper_level,
+    num_samples);
+
+  culib::device::resizable_array<char> device_temp_storage (temp_storage_bytes);
+
+  cudaEvent_t begin, end;
+  cudaEventCreate (&begin);
+  cudaEventCreate (&end);
+
+  cudaEventRecord (begin);
+
+  cub::DeviceHistogram::HistogramEven (
+    device_temp_storage.get (), temp_storage_bytes,
+    device_img.get (), device_histogram.get (),
+    num_levels, lower_level, upper_level,
+    num_samples);
+
+  cudaEventRecord (end);
+
+  cub_result.data.reset (new unsigned int[bins_count]);
+  culib::device::recv_n (device_histogram.get (), bins_count, cub_result.data.get ());
+
+  cudaEventElapsedTime (&cub_result.elapsed, begin, end);
+  cub_result.elapsed /= 1000;
+  cudaEventDestroy (begin);
+  cudaEventDestroy (end);
+  return cub_result;
+}
+
 int main (int argc, char *argv[])
 {
   if (argc != 3)
@@ -356,6 +406,8 @@ int main (int argc, char *argv[])
   {
     if (mode == calculation_mode::culib)
       return culib_hist (img.get ());
+    if (mode == calculation_mode::cub)
+      return cub_hist (img.get ());
     else if (mode == calculation_mode::cpu)
       return cpu_hist (img.get ());
     else if (mode == calculation_mode::cpu_mt)
