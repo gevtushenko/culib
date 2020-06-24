@@ -145,8 +145,9 @@ result_class cpu_hist (const img_class *img)
   unsigned int *hist = cpu_result.data.get ();
   std::fill_n (hist, bins_count, 0);
 
+  const unsigned char *in = img->data.get ();
   for (unsigned int i = 0; i < img->pixels_count; i++)
-    hist[img->data[i]]++;
+    hist[in[i]]++;
   auto end = std::chrono::high_resolution_clock::now ();
   cpu_result.elapsed = std::chrono::duration_cast<std::chrono::duration<double>> (end - begin).count ();
 
@@ -176,10 +177,11 @@ result_class cpu_mt_hist (const img_class *img)
                                         : chunk_size * (tid + 1);
 
         thread_buffers[tid].reset (new unsigned int[bins_count]);
+        const unsigned char *in = img->data.get ();
         unsigned int *thread_local_hist = thread_buffers[tid].get ();
 
         for (unsigned int i = first_element; i < last_element; i++)
-          thread_local_hist[img->data[i]]++;
+          thread_local_hist[in[i]]++;
       }));
     }
 
