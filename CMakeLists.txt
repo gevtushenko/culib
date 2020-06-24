@@ -31,6 +31,7 @@ target_sources(${PROJECT_NAME}
         include/culib/device/memory/pointer.h
         include/culib/device/memory/api.h
         include/culib/device/scan.cuh
+        include/culib/device/histogram.cuh
         include/culib/device/reduce.cuh
         include/culib/node/communication.h
         include/culib/node/reduce.cuh
@@ -74,3 +75,5 @@ option(BUILD_BENCHMARKS "Build benchmarks for CULIB" OFF)
 if(BUILD_BENCHMARKS)
     add_subdirectory(benchmarks)
 endif()
+
+add_subdirectory(examples)

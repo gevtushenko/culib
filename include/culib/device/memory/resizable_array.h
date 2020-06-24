@@ -24,6 +24,11 @@ class resizable_array
 
 public:
   resizable_array () = default;
+  resizable_array (std::size_t size)
+  {
+    if (!resize (size, false))
+      throw std::runtime_error ("culib: can't allocate " + std::to_string (size) + " elements");
+  }
 
   data_type * get () { return memory.get (); }
   const data_type * get () const { return memory.get (); }
