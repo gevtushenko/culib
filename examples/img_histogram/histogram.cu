@@ -6,6 +6,9 @@
 #include <memory>
 #include <chrono>
 
+#include <immintrin.h>
+#include <smmintrin.h>
+
 #include "culib/device/histogram.cuh"
 #include "culib/device/memory/resizable_array.h"
 #include "culib/device/memory/api.h"
@@ -108,7 +111,7 @@ std::unique_ptr<img_class> read_png_file (char *filename)
 
 enum class calculation_mode
 {
-  cpu, cpu_mt, culib, cub, unknown
+  cpu, cpu_mt, cpu_mt_simd, culib, cub, unknown
 };
 
 calculation_mode str_to_mode (const char *mode)
@@ -117,6 +120,8 @@ calculation_mode str_to_mode (const char *mode)
     return calculation_mode::cpu;
   if (strcmp (mode, "cpu_mt") == 0)
     return calculation_mode::cpu_mt;
+  if (strcmp (mode, "cpu_mt_simd") == 0)
+    return calculation_mode::cpu_mt_simd;
   else if (strcmp (mode, "culib") == 0)
     return calculation_mode::culib;
   else if (strcmp (mode, "cub") == 0)
@@ -175,6 +180,102 @@ result_class cpu_mt_hist (const img_class *img)
 
         for (unsigned int i = first_element; i < last_element; i++)
           thread_local_hist[img->data[i]]++;
+      }));
+    }
+
+  for (auto &thread: threads)
+    thread.join ();
+
+  for (unsigned int tid = 0; tid < threads_count; tid++)
+    for (unsigned int bin = 0; bin < bins_count; bin++)
+      hist[bin] += thread_buffers[tid][bin];
+
+  auto end = std::chrono::high_resolution_clock::now ();
+  cpu_result.elapsed = std::chrono::duration_cast<std::chrono::duration<double>> (end - begin).count ();
+
+  return cpu_result;
+}
+
+result_class cpu_mt_hist_simd (const img_class *img)
+{
+  result_class cpu_result;
+  cpu_result.data.reset (new unsigned int[bins_count]);
+
+  auto begin = std::chrono::high_resolution_clock::now ();
+  unsigned int *hist = cpu_result.data.get ();
+  std::fill_n (hist, bins_count, 0);
+
+  const unsigned int threads_count = std::thread::hardware_concurrency ();
+  const unsigned int chunk_size = img->pixels_count / threads_count;
+  std::vector<std::thread> threads;
+  std::unique_ptr<std::unique_ptr<unsigned int[]>[]> thread_buffers (new std::unique_ptr<unsigned int[]>[threads_count]);
+
+  for (unsigned int tid = 0; tid < threads_count; tid++)
+    {
+      threads.push_back(std::thread ([&,tid] () {
+        const unsigned int first_element = chunk_size * tid;
+        const unsigned int last_element = tid == threads_count - 1
+                                          ? img->pixels_count
+                                          : chunk_size * (tid + 1);
+        const unsigned int last_element_rounded_down = (last_element / 32) * 32;
+
+        unsigned int thread_buffer[32][bins_count] = {};
+
+        const unsigned char *in = img->data.get () + first_element;
+
+        __m256i next_packed_vec = _mm256_loadu_si256((__m256i*)in);
+        for (unsigned int i = first_element; i < last_element_rounded_down; i += 32)
+          {
+            __m256i current_vec = next_packed_vec;
+            next_packed_vec = _mm256_loadu_si256((__m256i*)(in+=32));
+
+            thread_buffer[0][_mm256_extract_epi8(current_vec,  0)]++;
+            thread_buffer[1][_mm256_extract_epi8(current_vec,  1)]++;
+            thread_buffer[2][_mm256_extract_epi8(current_vec,  2)]++;
+            thread_buffer[3][_mm256_extract_epi8(current_vec,  3)]++;
+            thread_buffer[4][_mm256_extract_epi8(current_vec,  4)]++;
+            thread_buffer[5][_mm256_extract_epi8(current_vec,  5)]++;
+            thread_buffer[6][_mm256_extract_epi8(current_vec,  6)]++;
+            thread_buffer[7][_mm256_extract_epi8(current_vec,  7)]++;
+            thread_buffer[0][_mm256_extract_epi8(current_vec,  8)]++;
+            thread_buffer[1][_mm256_extract_epi8(current_vec,  9)]++;
+            thread_buffer[2][_mm256_extract_epi8(current_vec, 10)]++;
+            thread_buffer[3][_mm256_extract_epi8(current_vec, 11)]++;
+            thread_buffer[4][_mm256_extract_epi8(current_vec, 12)]++;
+            thread_buffer[5][_mm256_extract_epi8(current_vec, 13)]++;
+            thread_buffer[6][_mm256_extract_epi8(current_vec, 14)]++;
+            thread_buffer[7][_mm256_extract_epi8(current_vec, 15)]++;
+            thread_buffer[0][_mm256_extract_epi8(current_vec, 16)]++;
+            thread_buffer[1][_mm256_extract_epi8(current_vec, 17)]++;
+            thread_buffer[2][_mm256_extract_epi8(current_vec, 18)]++;
+            thread_buffer[3][_mm256_extract_epi8(current_vec, 19)]++;
+            thread_buffer[4][_mm256_extract_epi8(current_vec, 20)]++;
+            thread_buffer[5][_mm256_extract_epi8(current_vec, 21)]++;
+            thread_buffer[6][_mm256_extract_epi8(current_vec, 22)]++;
+            thread_buffer[7][_mm256_extract_epi8(current_vec, 23)]++;
+            thread_buffer[0][_mm256_extract_epi8(current_vec, 24)]++;
+            thread_buffer[1][_mm256_extract_epi8(current_vec, 25)]++;
+            thread_buffer[2][_mm256_extract_epi8(current_vec, 26)]++;
+            thread_buffer[3][_mm256_extract_epi8(current_vec, 27)]++;
+            thread_buffer[4][_mm256_extract_epi8(current_vec, 28)]++;
+            thread_buffer[5][_mm256_extract_epi8(current_vec, 29)]++;
+            thread_buffer[6][_mm256_extract_epi8(current_vec, 30)]++;
+            thread_buffer[7][_mm256_extract_epi8(current_vec, 31)]++;
+          }
+
+        for (unsigned int i = last_element_rounded_down; i < last_element; i++)
+          thread_buffer[0][img->data[i]]++;
+
+        thread_buffers[tid].reset (new unsigned int[bins_count]);
+        for (unsigned int bin = 0; bin < bins_count; bin++)
+          thread_buffers[tid][bin] = thread_buffer[0][bin]
+                                   + thread_buffer[1][bin]
+                                   + thread_buffer[2][bin]
+                                   + thread_buffer[3][bin]
+                                   + thread_buffer[4][bin]
+                                   + thread_buffer[5][bin]
+                                   + thread_buffer[6][bin]
+                                   + thread_buffer[7][bin];
       }));
     }
 
@@ -257,6 +358,8 @@ int main (int argc, char *argv[])
       return cpu_hist (img.get ());
     else if (mode == calculation_mode::cpu_mt)
       return cpu_mt_hist (img.get ());
+    else if (mode == calculation_mode::cpu_mt_simd)
+      return cpu_mt_hist_simd (img.get ());
     return result_class {};
   } ();
 
