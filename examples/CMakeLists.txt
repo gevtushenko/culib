@@ -1,1 +1,3 @@
+add_subdirectory(common)
 add_subdirectory(img_histogram)
+add_subdirectory(img_minmax)
