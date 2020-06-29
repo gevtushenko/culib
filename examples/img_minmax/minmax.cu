@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <iostream>
 #include <numeric>
 #include <nccl.h>
@@ -34,7 +35,20 @@ unsigned int get_chunk_end (unsigned int n, unsigned int chunks_count, unsigned 
   return (n / chunks_count) * (chunk_id + 1);
 }
 
-void nccl_test (const img_class *img)
+class result_class
+{
+public:
+  result_class () = default;
+  result_class (float elapsed_arg, int minimal_value_arg)
+    : elapsed (elapsed_arg)
+    , minimal_value (minimal_value_arg)
+  { }
+
+  float elapsed {};
+  int minimal_value {};
+};
+
+result_class nccl_test (const img_class *img)
 {
   int devices_count {};
   cudaGetDeviceCount (&devices_count);
@@ -44,8 +58,9 @@ void nccl_test (const img_class *img)
   std::unique_ptr<ncclComm_t[]> comms (new ncclComm_t[devices_count]);
 
   std::unique_ptr<cudaStream_t[]> streams (new cudaStream_t[devices_count]);
+  std::unique_ptr<cudaEvent_t[]> begins (new cudaEvent_t[devices_count]);
+  std::unique_ptr<cudaEvent_t[]> ends (new cudaEvent_t[devices_count]);
   std::unique_ptr<unsigned char *[]> inputs (new unsigned char*[devices_count]);
-  std::unique_ptr<unsigned char *[]> outputs (new unsigned char*[devices_count]);
 
   std::iota (devs.get (), devs.get () + devices_count, 0);
   ncclCommInitAll (comms.get (), devices_count, devs.get ());
@@ -57,11 +72,17 @@ void nccl_test (const img_class *img)
       const unsigned int chunk_size = chunk_end - chunk_begin;
 
       cudaSetDevice (devs[i]);
-      cudaMalloc (&inputs[i], sizeof (unsigned char) * chunk_size);
-      cudaMalloc (&outputs[i], sizeof (unsigned char) * chunk_size);
+      cudaMalloc (&inputs[i], sizeof (unsigned char) * (chunk_size + 1));
       cudaMemcpy (inputs[i], img->data.get () + chunk_begin, sizeof (unsigned char) * chunk_size, cudaMemcpyHostToDevice);
-      cudaMemset (outputs[i], 0, sizeof (unsigned char) * chunk_size);
       cudaStreamCreate (&streams[i]);
+      cudaEventCreate (&begins[i]);
+      cudaEventCreate (&ends[i]);
+    }
+
+  for (int i = 0; i < devices_count; i++)
+    {
+      cudaSetDevice (devs[i]);
+      cudaEventRecord (begins[i]);
     }
 
   ncclGroupStart ();
@@ -71,7 +92,7 @@ void nccl_test (const img_class *img)
       const unsigned int chunk_end = get_chunk_end (img->pixels_count, devices_count, i);
       const unsigned int chunk_size = chunk_end - chunk_begin;
 
-      ncclAllReduce (inputs[i], outputs[i], chunk_size, ncclChar, ncclMin, comms[i], streams[i]);
+      ncclAllReduce (inputs[i], inputs[i], chunk_size + 1, ncclChar, ncclMin, comms[i], streams[i]);
     }
   ncclGroupEnd ();
 
@@ -79,20 +100,40 @@ void nccl_test (const img_class *img)
   for (int i = 0; i < devices_count; i++)
     {
       cudaSetDevice (i);
-      cudaStreamSynchronize (streams[i]);
+      cudaEventRecord (ends[i]);
     }
+
+  std::unique_ptr<float[]> elapsed_times (new float[devices_count]);
 
   for (int i = 0; i < devices_count; i++)
     {
+      cudaSetDevice (i);
+      cudaEventSynchronize (ends[i]);
+      cudaEventElapsedTime (elapsed_times.get () + i, begins[i], ends[i]);
+      cudaStreamSynchronize (streams[i]);
+    }
+
+  std::unique_ptr<unsigned char[]> results (new unsigned char[devices_count]);
+
+  for (int i = 0; i < devices_count; i++)
+    {
+      const unsigned int chunk_begin = get_chunk_begin (img->pixels_count, devices_count, i);
+      const unsigned int chunk_end = get_chunk_end (img->pixels_count, devices_count, i);
+      const unsigned int chunk_size = chunk_end - chunk_begin;
+
       cudaSetDevice (devs[i]);
+      cudaMemcpy (&results[i], inputs[i] + chunk_size, sizeof (unsigned char), cudaMemcpyDeviceToHost);
       cudaFree (inputs[i]);
-      cudaFree (outputs[i]);
       cudaStreamDestroy (streams[i]);
+      cudaEventDestroy (begins[i]);
+      cudaEventDestroy (ends[i]);
     }
 
   // Finalize nccl
   for (int i = 0; i < devices_count; i++)
     ncclCommDestroy (comms[i]);
+
+  return { *std::max_element (elapsed_times.get (), elapsed_times.get () + devices_count) / 1000, results[0]};
 }
 
 int main (int argc, char *argv[])
@@ -123,6 +164,8 @@ int main (int argc, char *argv[])
       return 1;
     }
 
+  result_class result {};
+
   switch (mode)
     {
       case calculation_mode::cpu:
@@ -131,8 +174,10 @@ int main (int argc, char *argv[])
         std::cerr << "Unsupported mode\n";
         return -1;
       case calculation_mode::nccl:
-        nccl_test (img.get ());
+        result = nccl_test (img.get ());
     };
+
+  std::cout << "Complete in " << result.elapsed << "s (result = " << result.minimal_value << ")\n";
 
   return 0;
 }
