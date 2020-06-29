@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <iostream>
 #include <numeric>
+#include <chrono>
 #include <nccl.h>
 
 #include "png_reader.h"
@@ -136,6 +137,22 @@ result_class nccl_test (const img_class *img)
   return { *std::max_element (elapsed_times.get (), elapsed_times.get () + devices_count) / 1000, results[0]};
 }
 
+result_class cpu_test (const img_class *img)
+{
+  unsigned char min {};
+  const unsigned char *input = img->data.get ();
+
+  auto begin = std::chrono::high_resolution_clock::now ();
+  for (unsigned int i = 0; i < img->pixels_count; i++)
+    if (input[i] < min)
+      min = input[i];
+
+  auto end = std::chrono::high_resolution_clock::now ();
+  const double elapsed = std::chrono::duration_cast<std::chrono::duration<double>> (end - begin).count ();
+
+  return { static_cast<float> (elapsed), min };
+}
+
 int main (int argc, char *argv[])
 {
   if (argc != 3)
@@ -169,12 +186,15 @@ int main (int argc, char *argv[])
   switch (mode)
     {
       case calculation_mode::cpu:
+        result = cpu_test (img.get ());
+        break;
       case calculation_mode::cpu_mt:
       case calculation_mode::culib:
         std::cerr << "Unsupported mode\n";
         return -1;
       case calculation_mode::nccl:
         result = nccl_test (img.get ());
+        break;
     };
 
   std::cout << "Complete in " << result.elapsed << "s (result = " << result.minimal_value << ")\n";
