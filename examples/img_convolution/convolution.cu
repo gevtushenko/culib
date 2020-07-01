@@ -109,6 +109,9 @@ result_class convolution_constant (const img_class *img)
   cudaEventDestroy (begin);
   cudaEventDestroy (end);
 
+  result.data.reset (new unsigned char[img->pixels_count]);
+  culib::device::recv_n (device_result.get (), img->pixels_count, result.data.get ());
+
   return result;
 }
 
@@ -151,6 +154,9 @@ result_class convolution (const img_class *img)
   cudaEventDestroy (begin);
   cudaEventDestroy (end);
 
+  result.data.reset (new unsigned char[img->pixels_count]);
+  culib::device::recv_n (device_result.get (), img->pixels_count, result.data.get ());
+
   return result;
 }
 
@@ -192,5 +198,6 @@ int main (int argc, char *argv[])
   } ();
 
   std::cout << "Complete in " << result.elapsed << "s\n";
+  write_png_file (result.data.get (), img->width, img->height, "result.png");
   return 0;
 }

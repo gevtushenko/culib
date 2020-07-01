@@ -35,5 +35,6 @@ public:
 };
 
 std::unique_ptr<img_class> read_png_file (char *filename);
+void write_png_file (unsigned char *data, unsigned int width, unsigned int height, const char *filename);
 
 #endif //CULIB_PNG_READER_H

@@ -72,3 +72,60 @@ std::unique_ptr<img_class> read_png_file (char *filename)
 
   return std::unique_ptr<img_class> {new img_class (width, height, is_gray, row_size, std::move (raw_data))};
 }
+
+void write_png_file (unsigned char *data, unsigned int width, unsigned int height, const char *filename)
+{
+  FILE *fp = fopen (filename, "wb");
+  if(!fp)
+    return;
+
+  png_structp png = png_create_write_struct (PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+  if (!png)
+    return;
+
+  png_infop info = png_create_info_struct (png);
+  if (!info)
+    return;
+
+  if (setjmp(png_jmpbuf (png)))
+    return;
+
+  png_init_io (png, fp);
+
+  // Output is 8bit depth, RGBA format.
+  png_set_IHDR (
+    png,
+    info,
+    width, height,
+    8,
+    PNG_COLOR_TYPE_GRAY,
+    PNG_INTERLACE_NONE,
+    PNG_COMPRESSION_TYPE_DEFAULT,
+    PNG_FILTER_TYPE_DEFAULT
+  );
+  png_write_info (png, info);
+
+  // To remove the alpha channel for PNG_COLOR_TYPE_RGB format,
+  // Use png_set_filler().
+  //png_set_filler(png, 0, PNG_FILLER_AFTER);
+
+  if (!data)
+    return;
+
+  std::unique_ptr<png_bytep[]> row_pointers_helper (new png_bytep[height]);
+
+  {
+    png_byte *raw_ptr = data;
+    for(int y = 0; y < height; y++) {
+        row_pointers_helper[y] = raw_ptr;
+        raw_ptr += width;
+      }
+  }
+
+  png_write_image (png, row_pointers_helper.get ());
+  png_write_end (png, NULL);
+
+  fclose(fp);
+
+  png_destroy_write_struct(&png, &info);
+}
