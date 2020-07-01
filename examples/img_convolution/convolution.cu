@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <memory>
+#include <chrono>
 
 enum class calculation_mode
 {
@@ -160,6 +161,67 @@ result_class convolution (const img_class *img)
   return result;
 }
 
+result_class convolution_cpu_naive (const img_class *img)
+{
+  result_class result;
+  result.data.reset (new unsigned char[img->pixels_count]);
+
+  const unsigned int height = img->height;
+  const unsigned int width = img->width;
+
+  unsigned char *res = result.data.get ();
+
+  auto begin = std::chrono::high_resolution_clock::now ();
+
+  constexpr int weights_size = 9;
+  const unsigned char weights[weights_size] =
+    { 2, 5, 2,
+      5, 9, 5,
+      2, 5, 2 };
+
+  const unsigned char *inp = img->data.get ();
+
+  for (unsigned int j = 0; j < width; j++)
+    res[j] = {};
+  res += width;
+
+  for (unsigned int i = 1; i < height - 1; i++)
+    {
+      res[0] = {};
+
+      for (unsigned int j = 1; j < width - 1; j++)
+        {
+          const unsigned int r1 = inp[(i - 1) * width + j - 1] * weights[0 * 3 + 0];
+          const unsigned int r2 = inp[(i - 1) * width + j + 0] * weights[0 * 3 + 1];
+          const unsigned int r3 = inp[(i - 1) * width + j + 1] * weights[0 * 3 + 2];
+          const unsigned int first_row_sum = r1 + r2 + r3;
+
+          const unsigned int r4 = inp[(i + 0) * width + j - 1] * weights[1 * 3 + 0];
+          const unsigned int r5 = inp[(i + 0) * width + j + 0] * weights[1 * 3 + 1];
+          const unsigned int r6 = inp[(i + 0) * width + j + 1] * weights[1 * 3 + 2];
+          const unsigned int second_row_sum = r4 + r5 + r6;
+
+          const unsigned int r7 = inp[(i + 1) * width + j - 1] * weights[2 * 3 + 0];
+          const unsigned int r8 = inp[(i + 1) * width + j + 0] * weights[2 * 3 + 1];
+          const unsigned int r9 = inp[(i + 1) * width + j + 1] * weights[2 * 3 + 2];
+          const unsigned int third_row_sum = r7 + r8 + r9;
+
+          res[j] = first_row_sum + second_row_sum + third_row_sum;
+        }
+
+      res[width - 1] = {};
+      res += width;
+    }
+
+  for (unsigned int j = 0; j < width; j++)
+    res[j] = {};
+
+  auto end = std::chrono::high_resolution_clock::now ();
+  result.elapsed = std::chrono::duration_cast<std::chrono::duration<double>> (end - begin).count ();
+
+  return result;
+}
+
 int main (int argc, char *argv[])
 {
   if (argc != 3)
@@ -190,6 +252,8 @@ int main (int argc, char *argv[])
 
   result_class result = [&] ()
   {
+    if (mode == calculation_mode::cpu)
+      return convolution_cpu_naive (img.get ());
     if (mode == calculation_mode::gpu)
       return convolution (img.get ());
     if (mode == calculation_mode::gpu_constant)
