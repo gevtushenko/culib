@@ -27,6 +27,7 @@ target_sources(${PROJECT_NAME}
         src/node/communication.cpp
 
         include/culib/warp/scan.cuh
+        include/culib/device/memory/const_resizable_array.cuh
         include/culib/device/memory/resizable_array.h
         include/culib/device/memory/pointer.h
         include/culib/device/memory/api.h

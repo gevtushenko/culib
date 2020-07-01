@@ -14,6 +14,7 @@ target_sources(${PROJECT_NAME}
         src/block/histogram_test.cu
         src/device/reduce_test.cu
         src/device/resizable_array_test.cu
+        src/device/const_resizable_array_test.cu
         src/device/pointer_test.cu
         src/node/communication_test.cu
         src/node/reduce_test.cu
