@@ -22,11 +22,11 @@ class const_resizable_array;
 template<typename data_type, unsigned int const_size = 1024>
 class const_resizeable_array_accessor
 {
-  data_type *ptr;
+  const data_type *ptr;
 public:
   const_resizeable_array_accessor () = delete;
 
-  __device__ data_type operator[] (unsigned int idx)
+  __device__ const data_type& operator[] (unsigned int idx)
   {
     if (idx < const_size)
       return cache<data_type, const_size>[idx];
