@@ -34,7 +34,7 @@ __global__ void convolution_constant_kernel (
   int width,
   int height,
   const unsigned char *data,
-  weights_type weights,
+  const weights_type weights,
   unsigned char *result
   )
 {

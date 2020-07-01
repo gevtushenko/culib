@@ -26,7 +26,7 @@ class const_resizeable_array_accessor
 public:
   const_resizeable_array_accessor () = delete;
 
-  __device__ const data_type& operator[] (unsigned int idx)
+  __device__ const data_type& operator[] (unsigned int idx) const
   {
     if (idx < const_size)
       return cache<data_type, const_size>[idx];
