@@ -4,9 +4,6 @@
 
 constexpr int ilp = 16;
 
-// There is no such file in cub library, so you should execute something like this to compile benchmark
-// version=$(git describe --tags); echo "#define CUB_VERSION \"${version}\"" > cub_version.cuh
-#include <cub/cub_version.cuh>
 #include <cub/cub.cuh>
 
 #include "culib/warp/reduce.cuh"
@@ -235,7 +232,7 @@ size_clk warp_inclusive_scan_benchmark_cub ()
 
 imp_result warp_reduce_benchmark ()
 {
-  const std::string cub_with_version = std::string ("cub.") + CUB_VERSION;
+  const std::string cub_with_version = std::string ("cub.") + std::to_string (CUB_VERSION);
 
   return {
     {"culib", {
@@ -250,7 +247,7 @@ imp_result warp_reduce_benchmark ()
 
 imp_result warp_exclusive_scan_benchmark ()
 {
-  const std::string cub_with_version = std::string ("cub.") + CUB_VERSION;
+  const std::string cub_with_version = std::string ("cub.") + std::to_string (CUB_VERSION);
 
   return {
     {"culib", {
@@ -265,7 +262,7 @@ imp_result warp_exclusive_scan_benchmark ()
 
 imp_result warp_inclusive_scan_benchmark ()
 {
-  const std::string cub_with_version = std::string ("cub.") + CUB_VERSION;
+  const std::string cub_with_version = std::string ("cub.") + std::to_string (CUB_VERSION);
 
   return {
     {"culib", {
