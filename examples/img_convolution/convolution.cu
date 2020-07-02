@@ -4,12 +4,14 @@
 #include "culib/device/memory/const_resizable_array.cuh"
 
 #include <iostream>
+#include <vector>
+#include <thread>
 #include <memory>
 #include <chrono>
 
 enum class calculation_mode
 {
-  cpu, cpu_simd, gpu_constant, gpu, unknown
+  cpu, cpu_simd, cpu_simd_mt, gpu_constant, gpu, unknown
 };
 
 calculation_mode str_to_mode (const char *mode)
@@ -18,6 +20,8 @@ calculation_mode str_to_mode (const char *mode)
     return calculation_mode::cpu;
   if (strcmp (mode, "cpu_simd") == 0)
     return calculation_mode::cpu_simd;
+  if (strcmp (mode, "cpu_simd_mt") == 0)
+    return calculation_mode::cpu_simd_mt;
   if (strcmp (mode, "gpu_constant") == 0)
     return calculation_mode::gpu_constant;
   else if (strcmp (mode, "gpu") == 0)
@@ -293,6 +297,120 @@ result_class convolution_cpu_simd (const img_class *img)
   return result;
 }
 
+unsigned int get_chunk_begin (unsigned int n, unsigned int chunks_count, unsigned int chunk_id)
+{
+  return (n / chunks_count) * chunk_id;
+}
+
+unsigned int get_chunk_end (unsigned int n, unsigned int chunks_count, unsigned int chunk_id)
+{
+  if (chunk_id == chunks_count - 1)
+    return n;
+  return (n / chunks_count) * (chunk_id + 1);
+}
+
+void convolution_2d_simd (
+  const float *inp,
+  float *result,
+  const unsigned int width,
+  const unsigned int first_row,
+  const unsigned int last_row)
+{
+  constexpr int weights_size = 9;
+  const float weights[weights_size] =
+    { 2, 5, 2,
+      5, 9, 5,
+      2, 5, 2 };
+
+  float *aligned_rows[3] = {};
+  const unsigned int convolution_width = width - 2;
+  for (unsigned int i = 0; i < 3; i ++)
+    posix_memalign ((void**) &aligned_rows[i], 32, convolution_width * sizeof (float));
+
+  float *res = result + first_row * width;
+
+  if (first_row == 0)
+    {
+      for (unsigned int j = 0; j < width; j++)
+        res[j] = {};
+      res += width;
+    }
+
+  __m256 sum_1;
+  __m256 sum_2;
+
+  for (unsigned int i = first_row; i < last_row; i++)
+    {
+      res[0] = {};
+
+      convolution_1d_simd (inp + (i - 1) * width + 1, weights, aligned_rows[0], convolution_width);
+      convolution_1d_simd (inp + (i + 0) * width + 1, weights, aligned_rows[1], convolution_width);
+      convolution_1d_simd (inp + (i + 1) * width + 1, weights, aligned_rows[2], convolution_width);
+
+      unsigned int j = 0;
+      for (; j < convolution_width - 8; j += 8)
+        {
+          sum_1 = _mm256_add_ps (_mm256_load_ps (aligned_rows[0] + j), _mm256_load_ps (aligned_rows[1] + j));
+          sum_2 = _mm256_add_ps (sum_1, _mm256_load_ps (aligned_rows[2] + j));
+
+          _mm256_storeu_ps (res + j + 1, sum_2);
+        }
+
+      for (; j < convolution_width; j++)
+        res[j + 1] = aligned_rows[0][j] + aligned_rows[1][j] + aligned_rows[2][j];
+
+      res[width - 1] = {};
+      res += width;
+    }
+
+  for (unsigned int i = 0; i < 3; i ++)
+    free (aligned_rows[i]);
+}
+
+result_class convolution_cpu_simd_mt (const img_class *img)
+{
+  result_class result;
+  result.data.reset (new float[img->pixels_count]);
+
+  const unsigned char *cpu_char_data = img->data.get ();
+  std::unique_ptr<float[]> host_img (new float[img->pixels_count]);
+  for (unsigned int i = 0; i < img->pixels_count; i++)
+    host_img[i] = cpu_char_data[i];
+
+  const unsigned int height = img->height;
+  const unsigned int width = img->width;
+
+  float *res = result.data.get ();
+
+  auto begin = std::chrono::high_resolution_clock::now ();
+
+  const unsigned int threads_count = std::thread::hardware_concurrency ();
+  std::vector<std::thread> threads;
+
+  for (unsigned int tid = 0; tid < threads_count - 1; tid++)
+    {
+      threads.push_back (std::thread ([&,tid] () {
+        const unsigned int first_row = get_chunk_begin (height, threads_count, tid);
+        const unsigned int last_row = get_chunk_end (height, threads_count, tid);
+        convolution_2d_simd (host_img.get (), res, width, (first_row + (tid == 0) /* skip first row */), last_row);
+      }));
+    }
+
+  const unsigned int first_row = get_chunk_begin (height, threads_count, threads_count - 1);
+  convolution_2d_simd (host_img.get (), res, width, first_row, height - 1);
+
+  for (unsigned int j = 0; j < width; j++)
+    res[j] = {};
+
+  for (auto &thread: threads)
+    thread.join ();
+
+  auto end = std::chrono::high_resolution_clock::now ();
+  result.elapsed = std::chrono::duration_cast<std::chrono::duration<double>> (end - begin).count ();
+
+  return result;
+}
+
 int main (int argc, char *argv[])
 {
   if (argc != 3)
@@ -336,6 +454,10 @@ int main (int argc, char *argv[])
     if (mode == calculation_mode::cpu_simd)
       {
         return convolution_cpu_simd (img.get ());
+      }
+    if (mode == calculation_mode::cpu_simd_mt)
+      {
+        return convolution_cpu_simd_mt (img.get ());
       }
     if (mode == calculation_mode::gpu)
       {
