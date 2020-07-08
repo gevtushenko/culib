@@ -311,17 +311,12 @@ unsigned int get_chunk_end (unsigned int n, unsigned int chunks_count, unsigned 
 
 void convolution_2d_simd (
   const float *inp,
+  const float *weights,
   float *result,
   const unsigned int width,
   const unsigned int first_row,
   const unsigned int last_row)
 {
-  constexpr int weights_size = 9;
-  const float weights[weights_size] =
-    { 2, 5, 2,
-      5, 9, 5,
-      2, 5, 2 };
-
   float *aligned_rows[3] = {};
   const unsigned int convolution_width = width - 2;
   for (unsigned int i = 0; i < 3; i ++)
@@ -367,7 +362,9 @@ void convolution_2d_simd (
     free (aligned_rows[i]);
 }
 
-result_class convolution_cpu_simd_mt (const img_class *img)
+result_class convolution_cpu_simd_mt (
+  const float *weights,
+  const img_class *img)
 {
   result_class result;
   result.data.reset (new float[img->pixels_count]);
@@ -392,12 +389,12 @@ result_class convolution_cpu_simd_mt (const img_class *img)
       threads.push_back (std::thread ([&,tid] () {
         const unsigned int first_row = get_chunk_begin (height, threads_count, tid);
         const unsigned int last_row = get_chunk_end (height, threads_count, tid);
-        convolution_2d_simd (host_img.get (), res, width, (first_row + (tid == 0) /* skip first row */), last_row);
+        convolution_2d_simd (host_img.get (), weights, res, width, (first_row + (tid == 0) /* skip first row */), last_row);
       }));
     }
 
   const unsigned int first_row = get_chunk_begin (height, threads_count, threads_count - 1);
-  convolution_2d_simd (host_img.get (), res, width, first_row, height - 1);
+  convolution_2d_simd (host_img.get (), weights, res, width, first_row, height - 1);
 
   for (unsigned int j = 0; j < width; j++)
     res[j] = {};
@@ -442,10 +439,17 @@ int main (int argc, char *argv[])
   result_class result = [&] ()
   {
     constexpr int weights_size = 9;
-    const float host_weights[weights_size] =
-      { 2, 5, 2,
-        5, 9, 5,
-        2, 5, 2 };
+    float host_weights[weights_size] =
+      { 1, 2, 1,
+        2, 4, 2,
+        1, 2, 1 };
+
+    float sum {};
+    for (unsigned int i = 0; i < weights_size; i++)
+      sum += host_weights[i];
+
+    for (unsigned int i = 0; i < weights_size; i++)
+      host_weights[i] /= sum;
 
     if (mode == calculation_mode::cpu)
       {
@@ -457,7 +461,7 @@ int main (int argc, char *argv[])
       }
     if (mode == calculation_mode::cpu_simd_mt)
       {
-        return convolution_cpu_simd_mt (img.get ());
+        return convolution_cpu_simd_mt (host_weights, img.get ());
       }
     if (mode == calculation_mode::gpu)
       {
