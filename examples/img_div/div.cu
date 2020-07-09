@@ -39,17 +39,61 @@ public:
   std::unique_ptr<unsigned char[]> data;
 };
 
-result_class cpu_div (const img_class *img, unsigned char div)
+template <int div>
+void cpu_div_kernel (
+  const unsigned int first,
+  const unsigned int last,
+  const unsigned char *input, unsigned char *output)
+{
+  for (unsigned int i = first; i < last; i++)
+    output[i] = input[i] / div;
+}
+
+template <int div>
+result_class cpu_div (const img_class *img)
+{
+  result_class cpu_result;
+  cpu_result.data.reset (new unsigned char[img->pixels_count]);
+
+  auto begin = std::chrono::high_resolution_clock::now ();
+
+  cpu_div_kernel<div> (0, img->pixels_count, img->data.get (), cpu_result.data.get ());
+
+  auto end = std::chrono::high_resolution_clock::now ();
+  cpu_result.elapsed = std::chrono::duration_cast<std::chrono::duration<double>> (end - begin).count ();
+
+  return cpu_result;
+}
+
+template <int div>
+result_class cpu_div_mt (const img_class *img)
 {
   result_class cpu_result;
   cpu_result.data.reset (new unsigned char[img->pixels_count]);
 
   auto begin = std::chrono::high_resolution_clock::now ();
   unsigned char *out = cpu_result.data.get ();
-
   const unsigned char *in = img->data.get ();
-  for (unsigned int i = 0; i < img->pixels_count; i++)
-    out[i] = in[i] / div;
+
+  std::vector<std::thread> threads;
+  unsigned int threads_count = std::thread::hardware_concurrency ();
+  unsigned int chunk_size = img->pixels_count / threads_count;
+
+  for (unsigned int tid = 1; tid < 2; tid++)
+    {
+      threads.push_back (std::thread ([&, tid] () {
+          const size_t first = chunk_size * tid;
+          const size_t last = tid == threads_count - 1 ? img->pixels_count : first + chunk_size;
+
+          cpu_div_kernel<div> (first, last, in, out);
+        }));
+    }
+
+  cpu_div_kernel<div> (0, (threads_count == 1 ? img->pixels_count : chunk_size), in, out);
+
+  for (auto &thread: threads)
+    thread.join ();
+
   auto end = std::chrono::high_resolution_clock::now ();
   cpu_result.elapsed = std::chrono::duration_cast<std::chrono::duration<double>> (end - begin).count ();
 
@@ -249,8 +293,11 @@ int main (int argc, char *argv[])
 
   constexpr unsigned char div = 4;
 
-  auto cpu_result = cpu_div (img.get (), div);
+  auto cpu_result = cpu_div<div> (img.get ());
   std::cout << "cpu: " << cpu_result.elapsed << "s\n";
+
+  auto cpu_mt_result = cpu_div_mt<div> (img.get ());
+  std::cout << "cpu mt: " << cpu_mt_result.elapsed << "s\n";
 
   auto gpu_result = gpu_div<div> (img.get ());
   std::cout << "gpu: " << gpu_result.elapsed << "s\n";
