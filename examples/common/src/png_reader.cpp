@@ -4,10 +4,13 @@
 
 #include "png_reader.h"
 
+#if PNG_PRESENT
 #include <png.h>
+#endif
 
 std::unique_ptr<img_class> read_png_file (char *filename)
 {
+#if PNG_PRESENT
   FILE *fp = fopen (filename, "rb");
 
   if (!fp)
@@ -71,10 +74,19 @@ std::unique_ptr<img_class> read_png_file (char *filename)
                        || color_type == PNG_COLOR_TYPE_GRAY_ALPHA;
 
   return std::unique_ptr<img_class> {new img_class (width, height, is_gray, row_size, std::move (raw_data))};
+#else
+  const bool is_gray = true;
+  const unsigned int width = 50000;
+  const unsigned int height = 50000;
+  const unsigned int row_size = width;
+  std::unique_ptr<unsigned char[]> raw_data (new unsigned char[width * height]);
+  return std::unique_ptr<img_class> {new img_class (width, height, is_gray, row_size, std::move (raw_data))};
+#endif
 }
 
 void write_png_file (unsigned char *data, unsigned int width, unsigned int height, const char *filename)
 {
+#if PNG_PRESENT
   FILE *fp = fopen (filename, "wb");
   if(!fp)
     return;
@@ -128,4 +140,5 @@ void write_png_file (unsigned char *data, unsigned int width, unsigned int heigh
   fclose(fp);
 
   png_destroy_write_struct(&png, &info);
+#endif
 }

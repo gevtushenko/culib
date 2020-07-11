@@ -1,13 +1,9 @@
-#include <png.h>
+#include <algorithm>
 #include <iostream>
-#include <fstream>
 #include <vector>
 #include <thread>
 #include <memory>
 #include <chrono>
-
-#include <immintrin.h>
-#include <smmintrin.h>
 
 #include "png_reader.h"
 
@@ -299,7 +295,7 @@ public:
 
   float get_elapsed ()
   {
-    cudaEventSynchronize(end);
+    cudaEventSynchronize (end);
 
     float result {};
     cudaEventElapsedTime (&result, begin, end);
@@ -322,8 +318,13 @@ result_class gpu_div_vec (const img_class *img)
 {
   result_class gpu_result (img->pixels_count);
   single_gpu_data gpu_data (img, 0, 1);
+
+  auto begin = std::chrono::high_resolution_clock::now ();
   gpu_data.launch<div> ();
-  gpu_result.elapsed = gpu_data.get_elapsed ();
+  gpu_data.get_elapsed ();
+  auto end = std::chrono::high_resolution_clock::now ();
+
+  gpu_result.elapsed = std::chrono::duration_cast<std::chrono::duration<double>> (end - begin).count ();
   gpu_data.receive (gpu_result.data.get ());
   return gpu_result;
 }
@@ -353,7 +354,10 @@ result_class gpu_div_vec_multiple_gpu_per_single_thread (const img_class *img)
     }
 
   for (unsigned int device_id = 0; device_id < devices_count; device_id++)
-    gpu_data[device_id]->get_elapsed ();
+    {
+      cudaSetDevice (device_id);
+      gpu_data[device_id]->get_elapsed ();
+    }
 
   auto end = std::chrono::high_resolution_clock::now ();
   gpu_result.elapsed = std::chrono::duration_cast<std::chrono::duration<double>> (end - begin).count ();
@@ -363,13 +367,17 @@ result_class gpu_div_vec_multiple_gpu_per_single_thread (const img_class *img)
 
 int main (int argc, char *argv[])
 {
+    char *input_file {};
+#if PNG_PRESENT
   if (argc != 2)
     {
       std::cout << "Usage: " << argv[0] << " [path to png file]";
       return 1;
     }
+    intput_file = argv[1];
+#endif
 
-  auto img = read_png_file (argv[1]);
+  auto img = read_png_file (input_file);
   if (!img)
     {
       std::cerr << "Can't read " << argv[1] << "\n";
@@ -384,17 +392,20 @@ int main (int argc, char *argv[])
 
   constexpr unsigned char div = 4;
 
-  auto cpu_result = cpu_div<div> (img.get ());
-  std::cout << "cpu: " << cpu_result.elapsed << "s\n";
+  if (0)
+  {
+      auto cpu_result = cpu_div<div> (img.get ());
+      std::cout << "cpu: " << cpu_result.elapsed << "s\n";
 
-  auto cpu_mt_result = cpu_div_mt<div> (img.get ());
-  std::cout << "cpu mt: " << cpu_mt_result.elapsed << "s\n";
+      auto cpu_mt_result = cpu_div_mt<div> (img.get ());
+      std::cout << "cpu mt: " << cpu_mt_result.elapsed << "s\n";
 
-  auto gpu_result = gpu_div<div> (img.get ());
-  std::cout << "gpu: " << gpu_result.elapsed << "s\n";
+      auto gpu_result = gpu_div<div> (img.get ());
+      std::cout << "gpu: " << gpu_result.elapsed << "s\n";
 
-  auto gpu_padded_result = gpu_div_padded<div> (img.get ());
-  std::cout << "gpu padded: " << gpu_padded_result.elapsed << "s\n";
+      auto gpu_padded_result = gpu_div_padded<div> (img.get ());
+      std::cout << "gpu padded: " << gpu_padded_result.elapsed << "s\n";
+  }
 
   auto gpu_vec_result = gpu_div_vec<div> (img.get ());
   std::cout << "gpu vec: " << gpu_vec_result.elapsed << "s\n";

@@ -5,6 +5,7 @@
 #ifndef CULIB_DEVICE_MEMORY_API_H
 #define CULIB_DEVICE_MEMORY_API_H
 
+#include <string>
 #include <cstddef>
 #include <stdexcept>
 #include <cuda_runtime.h>

@@ -5,6 +5,7 @@
 #include "culib/node/communication.h"
 
 #include <xmmintrin.h> // For _mm_pause
+#include <immintrin.h> // For _mm_pause
 
 using namespace culib;
 using namespace node;
