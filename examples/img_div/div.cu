@@ -35,6 +35,11 @@ calculation_mode str_to_mode (const char *mode)
 class result_class
 {
 public:
+  result_class () = default;
+  explicit result_class (unsigned int pixels_count)
+    : data (new unsigned char[pixels_count])
+  { }
+
   float elapsed {};
   std::unique_ptr<unsigned char[]> data;
 };
@@ -235,38 +240,124 @@ unsigned int round_up (unsigned int val, unsigned int multiple)
   return val + multiple - remainder;
 }
 
+class single_gpu_data
+{
+public:
+  single_gpu_data (
+    const img_class *img,
+    unsigned int gpu_id,
+    unsigned int gpus_count)
+  {
+    const unsigned int pixels_count = img->pixels_count;
+    const unsigned int chunk_size = pixels_count / gpus_count;
+    first_pixel = chunk_size * gpu_id;
+    last_pixel = gpu_id == gpus_count - 1
+               ? pixels_count
+               : chunk_size * (gpu_id + 1);
+
+    blocks_count = (get_n_subpixels () / 8 + threads_per_block - 1) / threads_per_block;
+
+    device_result.resize (get_n_padded_subpixels ());
+    device_img.resize (get_n_padded_subpixels ());
+
+    culib::device::send_n (img->data.get (), get_n_subpixels (), device_img.get ());
+
+    cudaEventCreate (&begin);
+    cudaEventCreate (&end);
+  }
+
+  ~single_gpu_data ()
+  {
+    cudaEventDestroy (begin);
+    cudaEventDestroy (end);
+  }
+
+  unsigned int get_n_subpixels () const
+  {
+    return last_pixel - first_pixel;
+  }
+
+  unsigned int get_n_padded_subpixels () const
+  {
+    return round_up (std::max (get_n_subpixels (), blocks_count * threads_per_block), 8);
+  }
+
+  void receive (unsigned char *result) const
+  {
+    culib::device::recv_n (device_result.get (), get_n_subpixels (), result + first_pixel);
+  }
+
+  template <int div>
+  void launch ()
+  {
+    cudaEventRecord(begin);
+
+    gpu_div_kernel_vec<div> <<<blocks_count, threads_per_block>>>(device_img.get (), device_result.get ());
+
+    cudaEventRecord(end);
+  }
+
+  float get_elapsed ()
+  {
+    cudaEventSynchronize(end);
+
+    float result {};
+    cudaEventElapsedTime (&result, begin, end);
+    return result / 1000.0;
+  }
+
+private:
+  cudaEvent_t begin, end;
+  culib::device::resizable_array<unsigned char> device_result;
+  culib::device::resizable_array<unsigned char> device_img;
+
+  unsigned int first_pixel {};
+  unsigned int last_pixel {};
+  unsigned int blocks_count {};
+  unsigned int threads_per_block = 256;
+};
+
 template <int div>
 result_class gpu_div_vec (const img_class *img)
 {
-  result_class gpu_result;
+  result_class gpu_result (img->pixels_count);
+  single_gpu_data gpu_data (img, 0, 1);
+  gpu_data.launch<div> ();
+  gpu_result.elapsed = gpu_data.get_elapsed ();
+  gpu_data.receive (gpu_result.data.get ());
+  return gpu_result;
+}
 
-  const unsigned int img_elements = img->row_size * img->height;
-  unsigned int threads_per_block = 128;
-  unsigned int blocks_count = (img_elements / 8 + threads_per_block - 1) / threads_per_block;
-  unsigned int padded_size = round_up (img_elements, 8);
+template <int div>
+result_class gpu_div_vec_multiple_gpu_per_single_thread (const img_class *img)
+{
+  int devices_count {};
+  cudaGetDeviceCount (&devices_count);
 
-  culib::device::resizable_array<unsigned char> device_result (padded_size);
-  culib::device::resizable_array<unsigned char> device_img (padded_size);
-  culib::device::send_n (img->data.get (), img_elements, device_img.get ());
+  result_class gpu_result (img->pixels_count);
+  std::unique_ptr<std::unique_ptr<single_gpu_data>[]> gpu_data (new std::unique_ptr<single_gpu_data>[devices_count]);
 
-  cudaEvent_t begin, end;
-  cudaEventCreate (&begin);
-  cudaEventCreate (&end);
+  for (unsigned int device_id = 0; device_id < devices_count; device_id++)
+    {
+      cudaSetDevice (device_id);
+      gpu_data[device_id].reset (new single_gpu_data (img, device_id, devices_count));
+      cudaDeviceSynchronize ();
+    }
 
-  cudaEventRecord(begin);
+  auto begin = std::chrono::high_resolution_clock::now ();
 
-  gpu_div_kernel_vec<div> <<<blocks_count, threads_per_block>>>(device_img.get (), device_result.get ());
+  for (unsigned int device_id = 0; device_id < devices_count; device_id++)
+    {
+      cudaSetDevice (device_id);
+      gpu_data[device_id]->launch<div> ();
+    }
 
-  cudaEventRecord(end);
-  cudaEventSynchronize(end);
+  for (unsigned int device_id = 0; device_id < devices_count; device_id++)
+    gpu_data[device_id]->get_elapsed ();
 
-  gpu_result.data.reset (new unsigned char[img_elements]);
-  culib::device::recv_n (device_result.get (), img_elements, gpu_result.data.get ());
+  auto end = std::chrono::high_resolution_clock::now ();
+  gpu_result.elapsed = std::chrono::duration_cast<std::chrono::duration<double>> (end - begin).count ();
 
-  cudaEventElapsedTime (&gpu_result.elapsed, begin, end);
-  gpu_result.elapsed /= 1000;
-  cudaEventDestroy(begin);
-  cudaEventDestroy(end);
   return gpu_result;
 }
 
@@ -303,10 +394,13 @@ int main (int argc, char *argv[])
   std::cout << "gpu: " << gpu_result.elapsed << "s\n";
 
   auto gpu_padded_result = gpu_div_padded<div> (img.get ());
-  std::cout << "gpu_padded: " << gpu_padded_result.elapsed << "s\n";
+  std::cout << "gpu padded: " << gpu_padded_result.elapsed << "s\n";
 
   auto gpu_vec_result = gpu_div_vec<div> (img.get ());
-  std::cout << "gpu_vec: " << gpu_vec_result.elapsed << "s\n";
+  std::cout << "gpu vec: " << gpu_vec_result.elapsed << "s\n";
+
+  auto gpu_vec_single_thread_multiple_gpu_result = gpu_div_vec_multiple_gpu_per_single_thread<div> (img.get ());
+  std::cout << "gpu vec (single thread multiple gpus): " << gpu_vec_single_thread_multiple_gpu_result.elapsed << "s\n";
 
   // write_png_file (result.data.get (), img->width, img->height, "result.png");
 
