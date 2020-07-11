@@ -320,7 +320,9 @@ result_class gpu_div_vec (const img_class *img)
   single_gpu_data gpu_data (img, 0, 1);
 
   auto begin = std::chrono::high_resolution_clock::now ();
-  gpu_data.launch<div> ();
+
+  for (unsigned int i = 0; i < 100; i++)
+    gpu_data.launch<div> ();
   gpu_data.get_elapsed ();
   auto end = std::chrono::high_resolution_clock::now ();
 
@@ -347,10 +349,13 @@ result_class gpu_div_vec_multiple_gpu_per_single_thread (const img_class *img)
 
   auto begin = std::chrono::high_resolution_clock::now ();
 
-  for (unsigned int device_id = 0; device_id < devices_count; device_id++)
+  for (unsigned int i = 0; i < 100; i++)
     {
-      cudaSetDevice (device_id);
-      gpu_data[device_id]->launch<div> ();
+      for (unsigned int device_id = 0; device_id < devices_count; device_id++)
+        {
+          cudaSetDevice (device_id);
+          gpu_data[device_id]->launch<div> ();
+        }
     }
 
   for (unsigned int device_id = 0; device_id < devices_count; device_id++)
@@ -363,6 +368,46 @@ result_class gpu_div_vec_multiple_gpu_per_single_thread (const img_class *img)
   gpu_result.elapsed = std::chrono::duration_cast<std::chrono::duration<double>> (end - begin).count ();
 
   return gpu_result;
+}
+
+template <int div>
+result_class gpu_div_vec_multiple_gpu_per_multi_thread (const img_class *img)
+{
+    int devices_count {};
+    cudaGetDeviceCount (&devices_count);
+
+    result_class gpu_result (img->pixels_count);
+    std::unique_ptr<std::unique_ptr<single_gpu_data>[]> gpu_data (new std::unique_ptr<single_gpu_data>[devices_count]);
+
+    for (unsigned int device_id = 0; device_id < devices_count; device_id++)
+    {
+        cudaSetDevice (device_id);
+        gpu_data[device_id].reset (new single_gpu_data (img, device_id, devices_count));
+        cudaDeviceSynchronize ();
+    }
+
+    auto begin = std::chrono::high_resolution_clock::now ();
+
+    std::vector<std::thread> threads;
+
+    for (unsigned int device_id = 0; device_id < devices_count; device_id++)
+      {
+        threads.push_back (std::thread ([&,device_id] () {
+            cudaSetDevice (device_id);
+
+            for (unsigned int step = 0; step < 100; step++)
+              gpu_data[device_id]->launch<div> ();
+            gpu_data[device_id]->get_elapsed ();
+        }));
+      }
+
+    for (auto &thread: threads)
+      thread.join ();
+
+    auto end = std::chrono::high_resolution_clock::now ();
+    gpu_result.elapsed = std::chrono::duration_cast<std::chrono::duration<double>> (end - begin).count ();
+
+    return gpu_result;
 }
 
 int main (int argc, char *argv[])
@@ -412,6 +457,9 @@ int main (int argc, char *argv[])
 
   auto gpu_vec_single_thread_multiple_gpu_result = gpu_div_vec_multiple_gpu_per_single_thread<div> (img.get ());
   std::cout << "gpu vec (single thread multiple gpus): " << gpu_vec_single_thread_multiple_gpu_result.elapsed << "s\n";
+
+  auto gpu_vec_multi_thread_multiple_gpu_result = gpu_div_vec_multiple_gpu_per_multi_thread<div> (img.get ());
+  std::cout << "gpu vec (multi-thread multiple gpus): " << gpu_vec_multi_thread_multiple_gpu_result.elapsed << "s\n";
 
   // write_png_file (result.data.get (), img->width, img->height, "result.png");
 

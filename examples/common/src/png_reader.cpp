@@ -76,8 +76,8 @@ std::unique_ptr<img_class> read_png_file (char *filename)
   return std::unique_ptr<img_class> {new img_class (width, height, is_gray, row_size, std::move (raw_data))};
 #else
   const bool is_gray = true;
-  const unsigned int width = 50000;
-  const unsigned int height = 50000;
+  const unsigned int width = 8000;
+  const unsigned int height = 6000;
   const unsigned int row_size = width;
   std::unique_ptr<unsigned char[]> raw_data (new unsigned char[width * height]);
   return std::unique_ptr<img_class> {new img_class (width, height, is_gray, row_size, std::move (raw_data))};
